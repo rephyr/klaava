@@ -1,18 +1,16 @@
-import { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import DisplayView from './views/display/DisplayView'
+import AdminView from './views/admin/AdminView'
 
 function App() {
-  const [message, setMessage] = useState('')
-
-  useEffect(() => {
-    fetch('/api/')
-      .then((res) => res.json())
-      .then((data) => setMessage(data.message))
-  }, [])
-
   return (
-    <div className="flex items-center justify-center h-screen">
-      <h1 className="text-4xl font-bold">{message || 'Loading...'}</h1>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/display" element={<DisplayView />} />
+        <Route path="/admin" element={<AdminView />} />
+        <Route path="*" element={<Navigate to="/display" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
