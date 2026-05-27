@@ -1,9 +1,10 @@
 # Klaava
 
+Tournament-style gambling game with RFID player cards and a live bracket display.
 
 ## Tech stack
 
-**FastAPI**: Python backend framework. Async-ready and handles RFID events and printer commands.
+**FastAPI**: Python backend framework. Async-ready and handles RFID events.
 
 **Uvicorn**: ASGI server that runs FastAPI
 
