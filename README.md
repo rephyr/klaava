@@ -1,20 +1,19 @@
 # Klaava
 
-Tournament-style drinking game with RFID player cards, a receipt printer, and a live bracket display.
 
 ## Tech stack
 
-**FastAPI** — Python backend framework. Async-ready and handles RFID events and printer commands well. Generates API docs automatically.
+**FastAPI**: Python backend framework. Async-ready and handles RFID events and printer commands.
 
-**Uvicorn** — ASGI server that runs FastAPI. Lightweight and supports hot-reload during development.
+**Uvicorn**: ASGI server that runs FastAPI
 
-**SQLAlchemy** — ORM for managing players, matches, and tournament state in the database without writing raw SQL.
+**SQLAlchemy**: ORM for managing players, matches, and tournament state in the database without writing raw SQL.
 
-**React** — Component-based UI library. Makes the live bracket easy to build, update, and re-render as match results come in.
+**React**: Component-based UI library.
 
-**Vite** — Frontend build tool. Fast dev server with instant hot module replacement.
+**Vite**: Frontend build tool. Fast dev server with instant hot module replacement.
 
-**Tailwind CSS** — Utility-first CSS framework. Quick to style the bracket display and game UI without writing custom stylesheets.
+**Tailwind CSS**: css framework
 
 ## Monorepo structure
 
