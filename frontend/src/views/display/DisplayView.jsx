@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getGameState, getSession } from '../../services/gameService'
 import { formatKlaava } from '../../utils/formatters'
+import GamblingView from './gambling/GamblingView'
+import MinigameView from './minigame/MinigameView'
+
+const POLL_INTERVAL = 3000
 
 function DisplayView() {
   const [gameState, setGameState] = useState(null)
@@ -9,50 +13,73 @@ function DisplayView() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    getGameState().then(setGameState)
+    let sessionId = null
+
+    async function poll() {
+      const state = await getGameState()
+      setGameState(state)
+      if (state?.sessionId && state.sessionId !== sessionId) {
+        sessionId = state.sessionId
+        getSession().then(setSession)
+      }
+      if (!state?.sessionId) {
+        setSession(null)
+        sessionId = null
+      }
+    }
+
+    poll()
+    const interval = setInterval(poll, POLL_INTERVAL)
+    return () => clearInterval(interval)
   }, [])
 
-  useEffect(() => {
-    if (gameState?.sessionId) {
-      getSession().then(setSession)
-    }
-  }, [gameState])
+  const phase = gameState?.phase ?? 'lobby'
 
-  const isLobby = !gameState?.sessionId || gameState?.phase === 'lobby'
+  function renderPhase() {
+    if (phase === 'lobby' || !session) {
+      return (
+        <div className="flex flex-col items-center justify-center flex-1 gap-3">
+          <p className="text-3xl font-semibold text-gray-300">Waiting for players...</p>
+          <p className="text-gray-500 text-sm">Start the game from the admin lobby</p>
+        </div>
+      )
+    }
+    if (phase === 'gambling')  return <GamblingView session={session} gameState={gameState} />
+    if (phase === 'minigame')  return <MinigameView session={session} gameState={gameState} />
+    if (phase === 'finished') {
+      return (
+        <div className="flex flex-col items-center justify-center flex-1 gap-3">
+          <p className="text-5xl font-bold">Game Over</p>
+          <p className="text-gray-400">Thanks for playing</p>
+        </div>
+      )
+    }
+    return null
+  }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
 
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold">Klaava</h1>
+      <div className="flex justify-between items-center px-8 py-4 border-b border-gray-800">
+        <h1 className="text-2xl font-bold">Klaava</h1>
+        {gameState?.sessionId && (
+          <div className="flex gap-6 text-sm text-gray-400 capitalize">
+            <span>Phase: <span className="text-white">{phase}</span></span>
+            <span>Round: <span className="text-white">{gameState.round}</span></span>
+            <span>Level: <span className="text-white">{gameState.level}</span></span>
+          </div>
+        )}
         <button
           onClick={() => navigate('/admin')}
-          className="text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 px-3 py-1 rounded transition-colors"
+          className="text-sm text-gray-500 hover:text-white border border-gray-700 hover:border-gray-500 px-3 py-1 rounded transition-colors"
         >
           Admin
         </button>
       </div>
 
-      {isLobby ? (
-        <div className="flex flex-col items-center justify-center mt-24 gap-4">
-          <p className="text-3xl font-semibold text-gray-300">Waiting for players...</p>
-        </div>
-      ) : (
-        <>
-          <p className="text-center text-gray-400 mb-8 capitalize">
-            Phase: {gameState.phase} --- Round {gameState.round} --- Level {gameState.level} --- Stake: {formatKlaava(gameState.stake)}
-          </p>
-          <div className="grid grid-cols-2 gap-4 max-w-xl mx-auto">
-            {(session?.players ?? []).map((player) => (
-              <div key={player.id} className="bg-gray-800 rounded-xl p-4">
-                <p className="text-lg font-semibold">{player.name}</p>
-                <p className="text-green-400">{formatKlaava(player.klaava)}</p>
-                <p className="text-xs text-gray-500 mt-1">RFID: {player.rfid ?? '—'}</p>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      <div className="flex-1 flex flex-col p-8">
+        {renderPhase()}
+      </div>
 
     </div>
   )

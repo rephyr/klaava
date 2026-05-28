@@ -6,26 +6,41 @@ from database import crud
 
 router = APIRouter(tags=["game"])
 
+def sessionToDict(session):
+    return {
+        "id": session.id,
+        "mode": session.mode,
+        "status": session.status,
+        "currentPhase": session.currentPhase,
+        "currentRound": session.currentRound,
+        "currentLevel": session.currentLevel,
+        "currentMinBet": session.currentMinBet,
+        "currentMaxBet": session.currentMaxBet,
+        "players": [sp.player for sp in session.sessionPlayers],
+    }
+
 @router.get("/game")
 def getGameState(db: Session = Depends(getDb)):
     session = crud.getActiveSession(db)
+    settings = crud.getSettings(db)
     if session:
         return {
             "phase": session.currentPhase,
             "round": session.currentRound,
             "level": session.currentLevel,
-            "stake": session.currentStake,
-            "stakeMultiplier": crud.getSettings(db).stakeMultiplier,
+            "minBet": session.currentMinBet,
+            "maxBet": session.currentMaxBet,
+            "betMultiplier": settings.betMultiplier,
             "gameMode": session.mode,
             "sessionId": session.id,
         }
-    settings = crud.getSettings(db)
     return {
         "phase": "lobby",
         "round": 0,
         "level": 1,
-        "stake": settings.initialStake,
-        "stakeMultiplier": settings.stakeMultiplier,
+        "minBet": settings.minBet,
+        "maxBet": settings.maxBet,
+        "betMultiplier": settings.betMultiplier,
         "gameMode": settings.gameMode,
         "sessionId": None,
     }
@@ -37,16 +52,7 @@ def startGame(data: GameStartRequest, db: Session = Depends(getDb)):
     session = crud.startGame(db, data)
     if not session:
         raise HTTPException(status_code=400, detail="One or more players not found or already eliminated")
-    return {
-        "id": session.id,
-        "mode": session.mode,
-        "status": session.status,
-        "currentPhase": session.currentPhase,
-        "currentRound": session.currentRound,
-        "currentLevel": session.currentLevel,
-        "currentStake": session.currentStake,
-        "players": [sp.player for sp in session.sessionPlayers],
-    }
+    return sessionToDict(session)
 
 @router.post("/game/advance")
 def advanceGame(data: GameAdvanceRequest, db: Session = Depends(getDb)):
@@ -57,7 +63,8 @@ def advanceGame(data: GameAdvanceRequest, db: Session = Depends(getDb)):
         "phase": session.currentPhase,
         "round": session.currentRound,
         "level": session.currentLevel,
-        "stake": session.currentStake,
+        "minBet": session.currentMinBet,
+        "maxBet": session.currentMaxBet,
     }
 
 @router.post("/game/stop")
@@ -72,16 +79,7 @@ def getSession(db: Session = Depends(getDb)):
     session = crud.getActiveSession(db)
     if not session:
         raise HTTPException(status_code=404, detail="No active session")
-    return {
-        "id": session.id,
-        "mode": session.mode,
-        "status": session.status,
-        "currentPhase": session.currentPhase,
-        "currentRound": session.currentRound,
-        "currentLevel": session.currentLevel,
-        "currentStake": session.currentStake,
-        "players": [sp.player for sp in session.sessionPlayers],
-    }
+    return sessionToDict(session)
 
 @router.post("/tournaments", response_model=TournamentRead)
 def createTournament(data: TournamentCreate, db: Session = Depends(getDb)):

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { getSettings, updateSettings } from '../../../services/settingsService'
 
-function SettingField({ label, id, type = 'number', value, onChange }) {
+function SettingField({ label, id, value, onChange }) {
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-xs text-gray-400">{label}</label>
       <input
         id={id}
-        type={type}
+        type="number"
         value={value}
         onChange={onChange}
         className="bg-gray-700 rounded px-3 py-1.5 text-sm text-white w-40"
@@ -32,8 +32,9 @@ function SettingsView() {
   async function handleSave() {
     await updateSettings({
       startingKlaava: Number(form.startingKlaava),
-      initialStake: Number(form.initialStake),
-      stakeMultiplier: Number(form.stakeMultiplier),
+      minBet: Number(form.minBet),
+      maxBet: Number(form.maxBet),
+      betMultiplier: Number(form.betMultiplier),
       loanInterestRate: Number(form.loanInterestRate),
       maxLoanAmount: Number(form.maxLoanAmount),
       gameMode: form.gameMode,
@@ -70,17 +71,29 @@ function SettingsView() {
               value={form.startingKlaava}
               onChange={(e) => handleChange('startingKlaava', e.target.value)}
             />
+          </div>
+        </section>
+
+        <section>
+          <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Betting</p>
+          <div className="flex flex-col gap-4">
             <SettingField
-              label="Initial stake"
-              id="initialStake"
-              value={form.initialStake}
-              onChange={(e) => handleChange('initialStake', e.target.value)}
+              label="Min bet"
+              id="minBet"
+              value={form.minBet}
+              onChange={(e) => handleChange('minBet', e.target.value)}
             />
             <SettingField
-              label="Stake multiplier per level"
-              id="stakeMultiplier"
-              value={form.stakeMultiplier}
-              onChange={(e) => handleChange('stakeMultiplier', e.target.value)}
+              label="Max bet"
+              id="maxBet"
+              value={form.maxBet}
+              onChange={(e) => handleChange('maxBet', e.target.value)}
+            />
+            <SettingField
+              label="Bet multiplier per level"
+              id="betMultiplier"
+              value={form.betMultiplier}
+              onChange={(e) => handleChange('betMultiplier', e.target.value)}
             />
           </div>
         </section>

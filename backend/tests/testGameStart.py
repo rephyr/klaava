@@ -10,12 +10,13 @@ def testStartGameReturnsSession(client):
     assert data["currentLevel"] == 1
     assert len(data["players"]) == 2
 
-def testStartGameUsesSettingsStake(client):
-    client.put("/settings/", json={"initialStake": 100})
+def testStartGameUsesSettingsBets(client):
+    client.put("/settings/", json={"minBet": 100, "maxBet": 400})
     p1 = client.post("/players/", json={"name": "Janne"}).json()
     p2 = client.post("/players/", json={"name": "Sara"}).json()
     res = client.post("/game/start", json={"playerIds": [p1["id"], p2["id"]]})
-    assert res.json()["currentStake"] == 100
+    assert res.json()["currentMinBet"] == 100
+    assert res.json()["currentMaxBet"] == 400
 
 def testStartGameUsesSettingsMode(client):
     client.put("/settings/", json={"gameMode": "sit_and_go"})
@@ -44,6 +45,15 @@ def testStartGameRejectsEliminatedPlayer(client):
     client.put(f"/players/{p1['id']}", json={"eliminated": True})
     res = client.post("/game/start", json={"playerIds": [p1["id"]]})
     assert res.status_code == 400
+
+def testNextLevelMultipliesBets(client):
+    client.put("/settings/", json={"minBet": 50, "maxBet": 200, "betMultiplier": 2.0})
+    p1 = client.post("/players/", json={"name": "Janne"}).json()
+    p2 = client.post("/players/", json={"name": "Sara"}).json()
+    client.post("/game/start", json={"playerIds": [p1["id"], p2["id"]]})
+    res = client.post("/game/advance", json={"nextLevel": True})
+    assert res.json()["minBet"] == 100
+    assert res.json()["maxBet"] == 400
 
 def testGameStateReflectsActiveSession(client):
     p1 = client.post("/players/", json={"name": "Janne"}).json()

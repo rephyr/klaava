@@ -53,7 +53,8 @@ class GameSessionRead(BaseModel):
     currentPhase: str
     currentRound: int
     currentLevel: int
-    currentStake: int
+    currentMinBet: int
+    currentMaxBet: int
     players: list[PlayerRead]
 
     model_config = {"from_attributes": True}
@@ -76,8 +77,9 @@ class LoanRead(BaseModel):
 
 class SettingsRead(BaseModel):
     startingKlaava: int
-    initialStake: int
-    stakeMultiplier: float
+    minBet: int
+    maxBet: int
+    betMultiplier: float
     loanInterestRate: float
     maxLoanAmount: int
     gameMode: str
@@ -86,8 +88,9 @@ class SettingsRead(BaseModel):
 
 class SettingsUpdate(BaseModel):
     startingKlaava: Optional[int] = None
-    initialStake: Optional[int] = None
-    stakeMultiplier: Optional[float] = None
+    minBet: Optional[int] = None
+    maxBet: Optional[int] = None
+    betMultiplier: Optional[float] = None
     loanInterestRate: Optional[float] = None
     maxLoanAmount: Optional[int] = None
     gameMode: Optional[str] = None

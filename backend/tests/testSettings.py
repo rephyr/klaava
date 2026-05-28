@@ -3,8 +3,9 @@ def testGetSettingsReturnsDefaults(client):
     assert res.status_code == 200
     data = res.json()
     assert data["startingKlaava"] == 500
-    assert data["initialStake"] == 50
-    assert data["stakeMultiplier"] == 2.0
+    assert data["minBet"] == 50
+    assert data["maxBet"] == 200
+    assert data["betMultiplier"] == 2.0
     assert data["loanInterestRate"] == 0.10
     assert data["maxLoanAmount"] == 200
     assert data["gameMode"] == "tournament"
@@ -20,9 +21,9 @@ def testUpdateSettings(client):
     assert res.json()["startingKlaava"] == 1000
 
 def testUpdateSettingsPartial(client):
-    client.put("/settings/", json={"initialStake": 100})
+    client.put("/settings/", json={"minBet": 100})
     res = client.get("/settings/")
-    assert res.json()["initialStake"] == 100
+    assert res.json()["minBet"] == 100
     assert res.json()["startingKlaava"] == 500
 
 def testUpdateGameMode(client):
@@ -35,3 +36,10 @@ def testUpdateMultipleFields(client):
     assert data["startingKlaava"] == 300
     assert data["maxLoanAmount"] == 500
     assert data["loanInterestRate"] == 0.20
+
+def testUpdateBetFields(client):
+    res = client.put("/settings/", json={"minBet": 25, "maxBet": 500, "betMultiplier": 3.0})
+    data = res.json()
+    assert data["minBet"] == 25
+    assert data["maxBet"] == 500
+    assert data["betMultiplier"] == 3.0

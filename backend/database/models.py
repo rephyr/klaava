@@ -27,7 +27,8 @@ class Tournament(Base):
     currentPhase = Column(String, default="lobby")  # lobby | gambling | minigame | bracket | finished
     currentRound = Column(Integer, default=0)
     currentLevel = Column(Integer, default=1)
-    currentStake = Column(Integer, default=0)
+    currentMinBet = Column(Integer, default=0)
+    currentMaxBet = Column(Integer, default=0)
     createdAt = Column(DateTime, server_default=func.now())
 
     rounds = relationship("Round", back_populates="tournament")
@@ -52,8 +53,9 @@ class Round(Base):
     tournamentId = Column(Integer, ForeignKey("tournaments.id"), nullable=False)
     roundNumber = Column(Integer, nullable=False)
     level = Column(Integer, nullable=False)
-    stake = Column(Integer, nullable=False)
-    phase = Column(String, nullable=False)  # gambling | minigame | bracket
+    minBet = Column(Integer, nullable=False)
+    maxBet = Column(Integer, nullable=False)
+    phase = Column(String, nullable=False)  # gambling | minigame
     status = Column(String, default="pending")  # pending | active | finished
 
     tournament = relationship("Tournament", back_populates="rounds")
@@ -90,8 +92,9 @@ class Settings(Base):
 
     id = Column(Integer, primary_key=True, default=1)
     startingKlaava = Column(Integer, default=500)
-    initialStake = Column(Integer, default=50)
-    stakeMultiplier = Column(Float, default=2.0)
+    minBet = Column(Integer, default=50)
+    maxBet = Column(Integer, default=200)
+    betMultiplier = Column(Float, default=2.0)
     loanInterestRate = Column(Float, default=0.10)
     maxLoanAmount = Column(Integer, default=200)
     gameMode = Column(String, default="tournament")  # sit_and_go | tournament

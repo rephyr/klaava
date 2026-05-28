@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getGameState, advanceGame } from '../../../services/gameService'
 import { formatKlaava } from '../../../utils/formatters'
 
-const PHASES = ['gambling', 'minigame', 'bracket']
+const PHASES = ['gambling', 'minigame']
 
 function GameControlView() {
   const [gameState, setGameState] = useState(null)
@@ -19,6 +19,9 @@ function GameControlView() {
   if (!gameState?.sessionId) {
     return <p className="text-gray-400 text-sm">No active game session. Start a game from the lobby first.</p>
   }
+
+  const nextMinBet = Math.round(gameState.minBet * gameState.betMultiplier)
+  const nextMaxBet = Math.round(gameState.maxBet * gameState.betMultiplier)
 
   return (
     <div>
@@ -38,8 +41,12 @@ function GameControlView() {
           <p className="font-semibold">{gameState.level}</p>
         </div>
         <div>
-          <p className="text-gray-500 text-xs mb-1">Stake</p>
-          <p className="font-semibold text-green-400">{formatKlaava(gameState.stake)}</p>
+          <p className="text-gray-500 text-xs mb-1">Min bet</p>
+          <p className="font-semibold text-green-400">{formatKlaava(gameState.minBet)}</p>
+        </div>
+        <div>
+          <p className="text-gray-500 text-xs mb-1">Max bet</p>
+          <p className="font-semibold text-green-400">{formatKlaava(gameState.maxBet)}</p>
         </div>
       </div>
 
@@ -75,7 +82,7 @@ function GameControlView() {
             onClick={() => handleAdvance({ nextLevel: true })}
             className="bg-yellow-700 hover:bg-yellow-600 text-white text-sm px-4 py-2 rounded"
           >
-            Next level — stake becomes {formatKlaava(Math.round(gameState.stake * gameState.stakeMultiplier))}
+            Next level — bets become {formatKlaava(nextMinBet)} / {formatKlaava(nextMaxBet)}
           </button>
         </div>
       </section>

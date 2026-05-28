@@ -107,7 +107,8 @@ def startGame(db: Session, data: GameStartRequest):
         currentPhase="gambling",
         currentRound=1,
         currentLevel=1,
-        currentStake=settings.initialStake,
+        currentMinBet=settings.minBet,
+        currentMaxBet=settings.maxBet,
     )
     db.add(tournament)
     db.flush()
@@ -131,7 +132,8 @@ def advanceGame(db: Session, data: GameAdvanceRequest):
     if data.nextLevel:
         settings = getSettings(db)
         session.currentLevel += 1
-        session.currentStake = round(session.currentStake * settings.stakeMultiplier)
+        session.currentMinBet = round(session.currentMinBet * settings.betMultiplier)
+        session.currentMaxBet = round(session.currentMaxBet * settings.betMultiplier)
     db.commit()
     db.refresh(session)
     return session
