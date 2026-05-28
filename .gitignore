@@ -229,3 +229,9 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# Database
+*.db
+
+# Pytest
+.pytest_cache/
