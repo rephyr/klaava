@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from .models import Player, Tournament, Loan, Settings
-from .schemas import PlayerCreate, PlayerUpdate, TournamentCreate, LoanCreate, SettingsUpdate
+from .models import Player, Tournament, TournamentPlayer, Loan, Settings
+from .schemas import PlayerCreate, PlayerUpdate, TournamentCreate, LoanCreate, SettingsUpdate, GameStartRequest, GameAdvanceRequest
 import math
 
 def getPlayers(db: Session):
@@ -94,6 +94,57 @@ def defaultLoan(db: Session, loanId: int):
     db.commit()
     db.refresh(loan)
     return loan
+
+def startGame(db: Session, data: GameStartRequest):
+    settings = getSettings(db)
+    mode = data.mode or settings.gameMode
+    players = db.query(Player).filter(Player.id.in_(data.playerIds), Player.eliminated.is_(False)).all()
+    if len(players) != len(data.playerIds):
+        return None
+    tournament = Tournament(
+        mode=mode,
+        status="active",
+        currentPhase="gambling",
+        currentRound=1,
+        currentLevel=1,
+        currentStake=settings.initialStake,
+    )
+    db.add(tournament)
+    db.flush()
+    for player in players:
+        db.add(TournamentPlayer(tournamentId=tournament.id, playerId=player.id))
+    db.commit()
+    db.refresh(tournament)
+    return tournament
+
+def getActiveSession(db: Session):
+    return db.query(Tournament).filter(Tournament.status == "active").order_by(Tournament.id.desc()).first()
+
+def advanceGame(db: Session, data: GameAdvanceRequest):
+    session = getActiveSession(db)
+    if not session:
+        return None
+    if data.phase:
+        session.currentPhase = data.phase
+    if data.nextRound:
+        session.currentRound += 1
+    if data.nextLevel:
+        settings = getSettings(db)
+        session.currentLevel += 1
+        session.currentStake = round(session.currentStake * settings.stakeMultiplier)
+    db.commit()
+    db.refresh(session)
+    return session
+
+def stopGame(db: Session):
+    session = getActiveSession(db)
+    if not session:
+        return None
+    session.status = "finished"
+    session.currentPhase = "finished"
+    db.commit()
+    db.refresh(session)
+    return session
 
 def getSettings(db: Session):
     settings = db.query(Settings).filter(Settings.id == 1).first()

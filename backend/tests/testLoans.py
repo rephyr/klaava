@@ -63,3 +63,21 @@ def testApplyInterestCompounds(client):
     client.post("/loans/interest/apply")
     res = client.post("/loans/interest/apply")
     assert res.json()[0]["amountOwed"] == 121
+
+def testLoanUsesSettingsInterestRate(client):
+    client.put("/settings/", json={"loanInterestRate": 0.20})
+    player = client.post("/players/", json={"name": "Janne", "klaava": 500}).json()
+    loan = client.post("/loans/", json={"playerId": player["id"], "amount": 100}).json()
+    assert loan["interestRate"] == 0.20
+
+def testLoanExceedingMaxAmountIsRejected(client):
+    client.put("/settings/", json={"maxLoanAmount": 200})
+    player = client.post("/players/", json={"name": "Janne", "klaava": 500}).json()
+    res = client.post("/loans/", json={"playerId": player["id"], "amount": 201})
+    assert res.status_code == 400
+
+def testLoanWithinMaxAmountIsAllowed(client):
+    client.put("/settings/", json={"maxLoanAmount": 200})
+    player = client.post("/players/", json={"name": "Janne", "klaava": 500}).json()
+    res = client.post("/loans/", json={"playerId": player["id"], "amount": 200})
+    assert res.status_code == 200

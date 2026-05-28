@@ -24,10 +24,26 @@ class Tournament(Base):
     id = Column(Integer, primary_key=True, index=True)
     mode = Column(String, nullable=False)  # sit_and_go | tournament
     status = Column(String, default="lobby")  # lobby | active | finished
+    currentPhase = Column(String, default="lobby")  # lobby | gambling | minigame | bracket | finished
+    currentRound = Column(Integer, default=0)
+    currentLevel = Column(Integer, default=1)
+    currentStake = Column(Integer, default=0)
     createdAt = Column(DateTime, server_default=func.now())
 
     rounds = relationship("Round", back_populates="tournament")
     leaderboardEntries = relationship("Leaderboard", back_populates="tournament")
+    sessionPlayers = relationship("TournamentPlayer", back_populates="tournament")
+
+class TournamentPlayer(Base):
+    __tablename__ = "tournament_players"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tournamentId = Column(Integer, ForeignKey("tournaments.id"), nullable=False)
+    playerId = Column(Integer, ForeignKey("players.id"), nullable=False)
+    active = Column(Boolean, default=True)
+
+    tournament = relationship("Tournament", back_populates="sessionPlayers")
+    player = relationship("Player")
 
 class Round(Base):
     __tablename__ = "rounds"

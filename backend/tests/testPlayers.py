@@ -47,6 +47,16 @@ def testCreatePlayerDefaultKlaava(client):
     res = client.post("/players/", json={"name": "Test"})
     assert res.json()["klaava"] == 500
 
+def testCreatePlayerUsesSettingsStartingKlaava(client):
+    client.put("/settings/", json={"startingKlaava": 999})
+    res = client.post("/players/", json={"name": "Test"})
+    assert res.json()["klaava"] == 999
+
+def testCreatePlayerExplicitKlaavaOverridesSettings(client):
+    client.put("/settings/", json={"startingKlaava": 999})
+    res = client.post("/players/", json={"name": "Test", "klaava": 200})
+    assert res.json()["klaava"] == 200
+
 def testCreatePlayerWithRfid(client):
     res = client.post("/players/", json={"name": "Janne", "rfid": "AA:BB:CC:01"})
     assert res.json()["rfid"] == "AA:BB:CC:01"
