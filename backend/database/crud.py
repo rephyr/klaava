@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from .models import Player, Tournament, Loan
-from .schemas import PlayerCreate, PlayerUpdate, TournamentCreate, LoanCreate
+from .models import Player, Tournament, Loan, Settings
+from .schemas import PlayerCreate, PlayerUpdate, TournamentCreate, LoanCreate, SettingsUpdate
 import math
 
 def getPlayers(db: Session):
@@ -94,3 +94,20 @@ def defaultLoan(db: Session, loanId: int):
     db.commit()
     db.refresh(loan)
     return loan
+
+def getSettings(db: Session):
+    settings = db.query(Settings).filter(Settings.id == 1).first()
+    if not settings:
+        settings = Settings(id=1)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
+
+def updateSettings(db: Session, data: SettingsUpdate):
+    settings = getSettings(db)
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(settings, field, value)
+    db.commit()
+    db.refresh(settings)
+    return settings

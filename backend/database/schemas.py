@@ -52,3 +52,21 @@ class LoanRead(BaseModel):
     createdAt: datetime
 
     model_config = {"from_attributes": True}
+
+class SettingsRead(BaseModel):
+    startingKlaava: int
+    initialStake: int
+    stakeMultiplier: float
+    loanInterestRate: float
+    maxLoanAmount: int
+    gameMode: str
+
+    model_config = {"from_attributes": True}
+
+class SettingsUpdate(BaseModel):
+    startingKlaava: Optional[int] = None
+    initialStake: Optional[int] = None
+    stakeMultiplier: Optional[float] = None
+    loanInterestRate: Optional[float] = None
+    maxLoanAmount: Optional[int] = None
+    gameMode: Optional[str] = None

@@ -69,6 +69,17 @@ class Loan(Base):
 
     player = relationship("Player", back_populates="loans")
 
+class Settings(Base):
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, default=1)
+    startingKlaava = Column(Integer, default=500)
+    initialStake = Column(Integer, default=50)
+    stakeMultiplier = Column(Float, default=2.0)
+    loanInterestRate = Column(Float, default=0.10)
+    maxLoanAmount = Column(Integer, default=200)
+    gameMode = Column(String, default="tournament")  # sit_and_go | tournament
+
 class Leaderboard(Base):
     __tablename__ = "leaderboards"
 

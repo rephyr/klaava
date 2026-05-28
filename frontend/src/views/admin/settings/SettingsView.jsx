@@ -1,5 +1,121 @@
+import { useEffect, useState } from 'react'
+import { getSettings, updateSettings } from '../../../services/settingsService'
+
+function SettingField({ label, id, type = 'number', value, onChange }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-xs text-gray-400">{label}</label>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={onChange}
+        className="bg-gray-700 rounded px-3 py-1.5 text-sm text-white w-40"
+      />
+    </div>
+  )
+}
+
 function SettingsView() {
-  return <div>Settings</div>
+  const [form, setForm] = useState(null)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    getSettings().then(setForm)
+  }, [])
+
+  function handleChange(field, value) {
+    setForm({ ...form, [field]: value })
+    setSaved(false)
+  }
+
+  async function handleSave() {
+    await updateSettings({
+      startingKlaava: Number(form.startingKlaava),
+      initialStake: Number(form.initialStake),
+      stakeMultiplier: Number(form.stakeMultiplier),
+      loanInterestRate: Number(form.loanInterestRate),
+      maxLoanAmount: Number(form.maxLoanAmount),
+      gameMode: form.gameMode,
+    })
+    setSaved(true)
+  }
+
+  if (!form) return <p className="text-gray-400 text-sm">Loading...</p>
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold mb-6">Settings</h2>
+
+      <div className="flex flex-col gap-6 max-w-md">
+
+        <section>
+          <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Game</p>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="gameMode" className="text-xs text-gray-400">Game mode</label>
+              <select
+                id="gameMode"
+                value={form.gameMode}
+                onChange={(e) => handleChange('gameMode', e.target.value)}
+                className="bg-gray-700 rounded px-3 py-1.5 text-sm text-white w-40"
+              >
+                <option value="tournament">Tournament</option>
+                <option value="sit_and_go">Sit and go</option>
+              </select>
+            </div>
+            <SettingField
+              label="Starting klaava"
+              id="startingKlaava"
+              value={form.startingKlaava}
+              onChange={(e) => handleChange('startingKlaava', e.target.value)}
+            />
+            <SettingField
+              label="Initial stake"
+              id="initialStake"
+              value={form.initialStake}
+              onChange={(e) => handleChange('initialStake', e.target.value)}
+            />
+            <SettingField
+              label="Stake multiplier per level"
+              id="stakeMultiplier"
+              value={form.stakeMultiplier}
+              onChange={(e) => handleChange('stakeMultiplier', e.target.value)}
+            />
+          </div>
+        </section>
+
+        <section>
+          <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Loans</p>
+          <div className="flex flex-col gap-4">
+            <SettingField
+              label="Max loan amount"
+              id="maxLoanAmount"
+              value={form.maxLoanAmount}
+              onChange={(e) => handleChange('maxLoanAmount', e.target.value)}
+            />
+            <SettingField
+              label="Interest rate per round"
+              id="loanInterestRate"
+              value={form.loanInterestRate}
+              onChange={(e) => handleChange('loanInterestRate', e.target.value)}
+            />
+          </div>
+        </section>
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleSave}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded"
+          >
+            Save
+          </button>
+          {saved && <p className="text-green-400 text-sm">Saved</p>}
+        </div>
+
+      </div>
+    </div>
+  )
 }
 
 export default SettingsView

@@ -235,3 +235,12 @@ Thumbs.db
 
 # Pytest
 .pytest_cache/
+
+# Backups & session data
+backup.json
+*.backup.json
+
+# Secrets
+.env
+.env.local
+.env.*
