@@ -7,8 +7,9 @@ import * as settingsService from '../../../services/settingsService'
 
 const mockSettings = {
   startingKlaava: 500,
-  initialStake: 50,
-  stakeMultiplier: 2.0,
+  minBet: 50,
+  maxBet: 200,
+  betMultiplier: 2.0,
   loanInterestRate: 0.1,
   maxLoanAmount: 200,
   gameMode: 'tournament',
@@ -33,7 +34,9 @@ test('renders settings fields', async () => {
   renderSettings()
   await waitFor(() => {
     expect(screen.getByLabelText('Starting klaava')).toBeInTheDocument()
-    expect(screen.getByLabelText('Initial stake')).toBeInTheDocument()
+    expect(screen.getByLabelText('Min bet')).toBeInTheDocument()
+    expect(screen.getByLabelText('Max bet')).toBeInTheDocument()
+    expect(screen.getByLabelText('Bet multiplier per level')).toBeInTheDocument()
     expect(screen.getByLabelText('Max loan amount')).toBeInTheDocument()
     expect(screen.getByLabelText('Interest rate per round')).toBeInTheDocument()
   })
@@ -43,7 +46,8 @@ test('loads settings values from API', async () => {
   renderSettings()
   await waitFor(() => {
     expect(screen.getByLabelText('Starting klaava')).toHaveValue(500)
-    expect(screen.getByLabelText('Initial stake')).toHaveValue(50)
+    expect(screen.getByLabelText('Min bet')).toHaveValue(50)
+    expect(screen.getByLabelText('Max bet')).toHaveValue(200)
   })
 })
 

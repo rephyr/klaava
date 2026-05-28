@@ -2,6 +2,9 @@ from sqlalchemy.orm import Session
 from .models import Player, Tournament, TournamentPlayer, Loan, Settings
 from .schemas import PlayerCreate, PlayerUpdate, TournamentCreate, LoanCreate, SettingsUpdate, GameStartRequest, GameAdvanceRequest
 import math
+import json
+from datetime import datetime
+
 
 def getPlayers(db: Session):
     return db.query(Player).all()
@@ -164,3 +167,73 @@ def updateSettings(db: Session, data: SettingsUpdate):
     db.commit()
     db.refresh(settings)
     return settings
+
+def backupToJson(db: Session):
+    players = getPlayers(db)
+    settings = getSettings(db)
+    loans = db.query(Loan).all()
+    data = {
+        "timestamp": datetime.now().isoformat(),
+        "players": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "klaava": p.klaava,
+                "rfid": p.rfid,
+                "eliminated": p.eliminated,
+                "powerup": p.powerup,
+            }
+            for p in players
+        ],
+        "settings": {
+            "startingKlaava": settings.startingKlaava,
+            "minBet": settings.minBet,
+            "maxBet": settings.maxBet,
+            "betMultiplier": settings.betMultiplier,
+            "loanInterestRate": settings.loanInterestRate,
+            "maxLoanAmount": settings.maxLoanAmount,
+            "gameMode": settings.gameMode,
+        },
+        "loans": [
+            {
+                "id": loan.id,
+                "playerId": loan.playerId,
+                "amount": loan.amount,
+                "interestRate": loan.interestRate,
+                "amountOwed": loan.amountOwed,
+                "status": loan.status,
+                "createdAt": loan.createdAt.isoformat() if loan.createdAt else None,
+            }
+            for loan in loans
+        ],
+    }
+    with open("backup.json", "w") as f:
+        json.dump(data, f, indent=2)
+    
+def restoreFromJson(db: Session):
+    with open("backup.json", "r") as f:
+        data = json.load(f)
+    db.query(Loan).delete()
+    db.query(Player).delete()
+    for p in data["players"]:
+        db.add(Player(
+            id=p["id"],
+            name=p["name"],
+            klaava=p["klaava"],
+            rfid=p["rfid"],
+            eliminated=p["eliminated"],
+            powerup=p["powerup"],
+        ))
+    for loan in data["loans"]:
+        db.add(Loan(
+            id=loan["id"],
+            playerId=loan["playerId"],
+            amount=loan["amount"],
+            interestRate=loan["interestRate"],
+            amountOwed=loan["amountOwed"],
+            status=loan["status"],
+        ))
+    settings = getSettings(db)
+    for field, value in data["settings"].items():
+        setattr(settings, field, value)
+    db.commit()

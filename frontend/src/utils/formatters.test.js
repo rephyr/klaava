@@ -9,7 +9,7 @@ test('formatKlaava works with zero', () => {
 })
 
 test('formatPlayerName trims whitespace', () => {
-  expect(formatPlayerName('  Janne  ')).toBe('Janne')
+  expect(formatPlayerName('  test  ')).toBe('test')
 })
 
 test('formatPlayerName returns Unknown for null', () => {
