@@ -1,5 +1,5 @@
-export function formatCredits(amount) {
-  return `${amount} cr`
+export function formatKlaava(amount) {
+  return `${amount} kl`
 }
 
 export function formatPlayerName(name) {
