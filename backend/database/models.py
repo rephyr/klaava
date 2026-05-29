@@ -87,6 +87,15 @@ class Loan(Base):
 
     player = relationship("Player", back_populates="loans")
 
+class Game(Base):
+    __tablename__ = "games"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    isActive = Column(Boolean, default=True)
+    createdAt = Column(DateTime, server_default=func.now())
+
 class Settings(Base):
     __tablename__ = "settings"
 

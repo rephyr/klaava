@@ -22,3 +22,14 @@ export function stopGame() {
 export function advanceGame(data) {
   return apiFetch('/game/advance', { method: 'POST', body: JSON.stringify(data) })
 }
+
+export function transferKlaava(fromPlayerId, toPlayerId, amount) {
+  return apiFetch('/game/transfer', {
+    method: 'POST',
+    body: JSON.stringify({ fromPlayerId, toPlayerId, amount }),
+  })
+}
+
+export function spinWheel() {
+  return apiFetch('/game/wheel/spin', { method: 'POST' })
+}

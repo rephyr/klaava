@@ -59,6 +59,18 @@ class GameSessionRead(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class TransferRequest(BaseModel):
+    fromPlayerId: int
+    toPlayerId: int
+    amount: int
+
+class TransferResult(BaseModel):
+    winner: PlayerRead
+    loser: PlayerRead
+    amount: int
+
+    model_config = {"from_attributes": True}
+
 class LoanCreate(BaseModel):
     playerId: int
     amount: int
@@ -71,6 +83,19 @@ class LoanRead(BaseModel):
     interestRate: float
     amountOwed: int
     status: str
+    createdAt: datetime
+
+    model_config = {"from_attributes": True}
+
+class GameCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class GameRead(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    isActive: bool
     createdAt: datetime
 
     model_config = {"from_attributes": True}

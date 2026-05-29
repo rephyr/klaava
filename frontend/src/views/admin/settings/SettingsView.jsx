@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getSettings, updateSettings } from '../../../services/settingsService'
+import { createBackup, restoreBackup } from '../../../services/backupService'
 
 function SettingField({ label, id, value, onChange }) {
   return (
@@ -19,6 +20,20 @@ function SettingField({ label, id, value, onChange }) {
 function SettingsView() {
   const [form, setForm] = useState(null)
   const [saved, setSaved] = useState(false)
+  const [backupMsg, setBackupMsg] = useState(null)
+
+  async function handleBackup() {
+    await createBackup()
+    setBackupMsg('Backup created')
+    setTimeout(() => setBackupMsg(null), 3000)
+  }
+
+  async function handleRestore() {
+    if (!window.confirm('Restore from backup? This will overwrite current player data.')) return
+    await restoreBackup()
+    setBackupMsg('Restored from backup')
+    setTimeout(() => setBackupMsg(null), 3000)
+  }
 
   useEffect(() => {
     getSettings().then(setForm)
@@ -125,6 +140,25 @@ function SettingsView() {
           </button>
           {saved && <p className="text-green-400 text-sm">Saved</p>}
         </div>
+
+        <section>
+          <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Backup</p>
+          <div className="flex gap-3 items-center">
+            <button
+              onClick={handleBackup}
+              className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded"
+            >
+              Backup now
+            </button>
+            <button
+              onClick={handleRestore}
+              className="bg-red-800 hover:bg-red-700 text-white text-sm px-4 py-2 rounded"
+            >
+              Restore from backup
+            </button>
+            {backupMsg && <p className="text-green-400 text-sm">{backupMsg}</p>}
+          </div>
+        </section>
 
       </div>
     </div>

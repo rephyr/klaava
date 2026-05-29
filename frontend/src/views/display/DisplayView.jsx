@@ -4,6 +4,11 @@ import { getGameState, getSession } from '../../services/gameService'
 import { formatKlaava } from '../../utils/formatters'
 import GamblingView from './gambling/GamblingView'
 import MinigameView from './minigame/MinigameView'
+import ShopView from './shop/ShopView'
+import ResultView from './result/ResultView'
+import WheelView from './wheel/WheelView'
+import HiLoView from './hiLo/HiLoView'
+import BlackjackView from './blackjack/BlackjackView'
 
 const POLL_INTERVAL = 3000
 
@@ -13,18 +18,13 @@ function DisplayView() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    let sessionId = null
-
     async function poll() {
       const state = await getGameState()
       setGameState(state)
-      if (state?.sessionId && state.sessionId !== sessionId) {
-        sessionId = state.sessionId
+      if (state?.sessionId) {
         getSession().then(setSession)
-      }
-      if (!state?.sessionId) {
+      } else {
         setSession(null)
-        sessionId = null
       }
     }
 
@@ -44,8 +44,13 @@ function DisplayView() {
         </div>
       )
     }
-    if (phase === 'gambling')  return <GamblingView session={session} gameState={gameState} />
-    if (phase === 'minigame')  return <MinigameView session={session} gameState={gameState} />
+    if (phase === 'gambling') return <GamblingView session={session} gameState={gameState} />
+    if (phase === 'minigame') return <MinigameView session={session} gameState={gameState} />
+    if (phase === 'shop')     return <ShopView gameState={gameState} />
+    if (phase === 'result')   return <ResultView gameState={gameState} />
+    if (phase === 'wheel')    return <WheelView gameState={gameState} />
+    if (phase === 'hiLo')      return <HiLoView />
+    if (phase === 'blackjack') return <BlackjackView />
     if (phase === 'finished') {
       return (
         <div className="flex flex-col items-center justify-center flex-1 gap-3">

@@ -1,4 +1,16 @@
 import { formatKlaava } from '../../../utils/formatters'
+import useAnimatedNumber from '../../../hooks/useAnimatedNumber'
+
+function PlayerCard({ player }) {
+  const animatedKlaava = useAnimatedNumber(player.klaava)
+  return (
+    <div className="bg-gray-800 rounded-2xl p-6 flex flex-col gap-2">
+      <p className="text-2xl font-bold">{player.name}</p>
+      <p className="text-3xl font-semibold text-green-400">{formatKlaava(animatedKlaava)}</p>
+      {player.rfid && <p className="text-xs text-gray-500">RFID: {player.rfid}</p>}
+    </div>
+  )
+}
 
 function GamblingView({ session, gameState }) {
   const players = session?.players ?? []
@@ -15,11 +27,7 @@ function GamblingView({ session, gameState }) {
       </div>
       <div className="grid grid-cols-2 gap-4 w-full">
         {players.map((player) => (
-          <div key={player.id} className="bg-gray-800 rounded-2xl p-6 flex flex-col gap-2">
-            <p className="text-2xl font-bold">{player.name}</p>
-            <p className="text-3xl font-semibold text-green-400">{formatKlaava(player.klaava)}</p>
-            {player.rfid && <p className="text-xs text-gray-500">RFID: {player.rfid}</p>}
-          </div>
+          <PlayerCard key={player.id} player={player} />
         ))}
       </div>
     </div>

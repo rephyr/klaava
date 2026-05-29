@@ -33,6 +33,22 @@ function AdminView() {
           Game Control
         </NavLink>
         <NavLink
+          to="/admin/games"
+          className={({ isActive }) =>
+            `px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`
+          }
+        >
+          Games
+        </NavLink>
+        <NavLink
+          to="/admin/shop"
+          className={({ isActive }) =>
+            `px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`
+          }
+        >
+          Shop
+        </NavLink>
+        <NavLink
           to="/admin/settings"
           className={({ isActive }) =>
             `px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`

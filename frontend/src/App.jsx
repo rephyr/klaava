@@ -4,6 +4,8 @@ import AdminView from './views/admin/AdminView'
 import LobbyView from './views/admin/lobby/LobbyView'
 import PlayersView from './views/admin/players/PlayersView'
 import GameControlView from './views/admin/gameControl/GameControlView'
+import GamesView from './views/admin/games/GamesView'
+import AdminShopView from './views/admin/shop/AdminShopView'
 import SettingsView from './views/admin/settings/SettingsView'
 
 function App() {
@@ -16,6 +18,8 @@ function App() {
           <Route path="lobby" element={<LobbyView />} />
           <Route path="game-control" element={<GameControlView />} />
           <Route path="players" element={<PlayersView />} />
+          <Route path="games" element={<GamesView />} />
+          <Route path="shop" element={<AdminShopView />} />
           <Route path="settings" element={<SettingsView />} />
         </Route>
         <Route path="*" element={<Navigate to="/display" replace />} />

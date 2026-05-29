@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from .models import Player, Tournament, TournamentPlayer, Loan, Settings
-from .schemas import PlayerCreate, PlayerUpdate, TournamentCreate, LoanCreate, SettingsUpdate, GameStartRequest, GameAdvanceRequest
+from .models import Player, Tournament, TournamentPlayer, Round, Transaction, Loan, Settings, Game
+from .schemas import PlayerCreate, PlayerUpdate, TournamentCreate, LoanCreate, SettingsUpdate, GameStartRequest, GameAdvanceRequest, TransferRequest, GameCreate
 import math
 import json
 from datetime import datetime
@@ -121,6 +121,34 @@ def startGame(db: Session, data: GameStartRequest):
     db.refresh(tournament)
     return tournament
 
+def transferKlaava(db: Session, data: TransferRequest):
+    loser = getPlayer(db, data.fromPlayerId)
+    winner = getPlayer(db, data.toPlayerId)
+    if not loser or not winner:
+        return None
+    if loser.klaava < data.amount:
+        return None
+    loser.klaava -= data.amount
+    winner.klaava += data.amount
+    session = getActiveSession(db)
+    roundId = None
+    if session:
+        activeRound = db.query(Round).filter(
+            Round.tournamentId == session.id,
+            Round.status == "active"
+        ).first()
+        if activeRound:
+            roundId = activeRound.id
+    db.add(Transaction(playerId=loser.id, roundId=roundId, amount=-data.amount, type="bet"))
+    db.add(Transaction(playerId=winner.id, roundId=roundId, amount=data.amount, type="bet"))
+    if loser.klaava <= 0:
+        loser.klaava = 0
+        loser.eliminated = True
+    db.commit()
+    db.refresh(loser)
+    db.refresh(winner)
+    return {"winner": winner, "loser": loser, "amount": data.amount}
+
 def getActiveSession(db: Session):
     return db.query(Tournament).filter(Tournament.status == "active").order_by(Tournament.id.desc()).first()
 
@@ -167,6 +195,33 @@ def updateSettings(db: Session, data: SettingsUpdate):
     db.commit()
     db.refresh(settings)
     return settings
+
+def getGames(db: Session):
+    return db.query(Game).all()
+
+def createGame(db: Session, data: GameCreate):
+    game = Game(**data.model_dump())
+    db.add(game)
+    db.commit()
+    db.refresh(game)
+    return game
+
+def deleteGame(db: Session, gameId: int):
+    game = db.query(Game).filter(Game.id == gameId).first()
+    if not game:
+        return None
+    db.delete(game)
+    db.commit()
+    return game
+
+def toggleGame(db: Session, gameId: int):
+    game = db.query(Game).filter(Game.id == gameId).first()
+    if not game:
+        return None
+    game.isActive = not game.isActive
+    db.commit()
+    db.refresh(game)
+    return game
 
 def backupToJson(db: Session):
     players = getPlayers(db)

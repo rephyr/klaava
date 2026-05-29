@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.connection import engine
 from database.models import Base
-from routers import players, loans, game, settings, backup
+from routers import players, loans, game, settings, backup, shop, games, hiLo, blackjack
 
 Base.metadata.create_all(bind=engine)
 
@@ -20,6 +20,10 @@ app.include_router(loans.router)
 app.include_router(game.router)
 app.include_router(settings.router)
 app.include_router(backup.router)
+app.include_router(shop.router)
+app.include_router(games.router)
+app.include_router(hiLo.router)
+app.include_router(blackjack.router)
 
 @app.get("/")
 def helloWorld():
