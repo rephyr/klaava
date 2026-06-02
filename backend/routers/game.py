@@ -22,7 +22,7 @@ def sessionToDict(session):
         "currentLevel": session.currentLevel,
         "currentMinBet": session.currentMinBet,
         "currentMaxBet": session.currentMaxBet,
-        "players": [sp.player for sp in session.sessionPlayers],
+        "players": [sp.player for sp in session.sessionPlayers if sp.player is not None],
     }
 
 @router.get("/game")

@@ -49,6 +49,14 @@ function AdminView() {
           Shop
         </NavLink>
         <NavLink
+          to="/admin/loans"
+          className={({ isActive }) =>
+            `px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`
+          }
+        >
+          Loans
+        </NavLink>
+        <NavLink
           to="/admin/settings"
           className={({ isActive }) =>
             `px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`

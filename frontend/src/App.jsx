@@ -7,6 +7,7 @@ import GameControlView from './views/admin/gameControl/GameControlView'
 import GamesView from './views/admin/games/GamesView'
 import AdminShopView from './views/admin/shop/AdminShopView'
 import SettingsView from './views/admin/settings/SettingsView'
+import LoansView from './views/admin/loans/LoansView'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="players" element={<PlayersView />} />
           <Route path="games" element={<GamesView />} />
           <Route path="shop" element={<AdminShopView />} />
+          <Route path="loans" element={<LoansView />} />
           <Route path="settings" element={<SettingsView />} />
         </Route>
         <Route path="*" element={<Navigate to="/display" replace />} />

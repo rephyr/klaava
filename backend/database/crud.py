@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from .models import Player, Tournament, TournamentPlayer, Round, Transaction, Loan, Settings, Game
+from .models import Player, Tournament, TournamentPlayer, Round, Transaction, Loan, Settings, Game, Leaderboard
 from .schemas import PlayerCreate, PlayerUpdate, TournamentCreate, LoanCreate, SettingsUpdate, GameStartRequest, GameAdvanceRequest, TransferRequest, GameCreate
 import math
 import json
@@ -33,6 +33,10 @@ def deletePlayer(db: Session, playerId: int):
     player = getPlayer(db, playerId)
     if not player:
         return None
+    db.query(Transaction).filter(Transaction.playerId == playerId).delete()
+    db.query(Loan).filter(Loan.playerId == playerId).delete()
+    db.query(TournamentPlayer).filter(TournamentPlayer.playerId == playerId).delete()
+    db.query(Leaderboard).filter(Leaderboard.playerId == playerId).delete()
     db.delete(player)
     db.commit()
     return player
