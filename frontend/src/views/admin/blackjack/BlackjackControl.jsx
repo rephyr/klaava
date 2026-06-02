@@ -9,7 +9,7 @@ const RESULT_COLOR = {
   blackjack: 'text-yellow-400',
 }
 
-function BlackjackControl({ players, defaultBet, onStateChange }) {
+function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }) {
   const [bets, setBets] = useState({})
   const [bjState, setBjState] = useState(null)
 
@@ -40,6 +40,7 @@ function BlackjackControl({ players, defaultBet, onStateChange }) {
     const state = await dealerPlay()
     setBjState(state)
     onStateChange('blackjack')
+    refreshPlayers?.()
   }
 
   async function handleReset() {
