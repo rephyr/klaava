@@ -4,13 +4,15 @@ import BlackjackControl from '../blackjack/BlackjackControl'
 import HiLoControl from '../hiLo/HiLoControl'
 import WheelControl from '../wheel/WheelControl'
 import KlaavaTransfer from '../transfer/KlaavaTransfer'
+import RouletteControl from '../roulette/RouletteControl'
 import { formatKlaava } from '../../../utils/formatters'
 
-const PHASES = ['gambling', 'minigame', 'shop', 'result', 'wheel', 'hiLo', 'blackjack', 'loans']
+const PHASES = ['gambling', 'minigame', 'shop', 'result', 'wheel', 'hiLo', 'blackjack', 'roulette', 'loans']
 
 const GAMES = [
   { id: 'hiLo', label: 'Hi-Lo' },
   { id: 'blackjack', label: 'Blackjack' },
+  { id: 'roulette', label: 'Roulette' },
   { id: 'wheel', label: 'Wheel' },
   { id: 'transfer', label: 'Klaava Transfer' },
 ]
@@ -147,6 +149,14 @@ function GameControlView() {
                 players={players}
                 defaultBet={gameState.minBet}
                 onStateChange={(phase) => handleAdvance({ phase })}
+                refreshPlayers={refreshPlayers}
+              />
+            )}
+            {selectedGame === 'roulette' && (
+              <RouletteControl
+                players={players}
+                gameState={gameState}
+                onPhaseChange={(phase) => handleAdvance({ phase })}
                 refreshPlayers={refreshPlayers}
               />
             )}
