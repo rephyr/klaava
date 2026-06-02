@@ -6,7 +6,7 @@ import WheelControl from '../wheel/WheelControl'
 import KlaavaTransfer from '../transfer/KlaavaTransfer'
 import { formatKlaava } from '../../../utils/formatters'
 
-const PHASES = ['gambling', 'minigame', 'shop', 'result', 'wheel', 'hiLo', 'blackjack']
+const PHASES = ['gambling', 'minigame', 'shop', 'result', 'wheel', 'hiLo', 'blackjack', 'loans']
 
 const GAMES = [
   { id: 'hiLo', label: 'Hi-Lo' },

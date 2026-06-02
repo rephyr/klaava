@@ -9,6 +9,7 @@ import ResultView from './result/ResultView'
 import WheelView from './wheel/WheelView'
 import HiLoView from './hiLo/HiLoView'
 import BlackjackView from './blackjack/BlackjackView'
+import LoanView from './loans/LoanView'
 
 const POLL_INTERVAL = 3000
 
@@ -51,6 +52,7 @@ function DisplayView() {
     if (phase === 'wheel')    return <WheelView gameState={gameState} />
     if (phase === 'hiLo')      return <HiLoView />
     if (phase === 'blackjack') return <BlackjackView />
+    if (phase === 'loans')     return <LoanView />
     if (phase === 'finished') {
       return (
         <div className="flex flex-col items-center justify-center flex-1 gap-3">
