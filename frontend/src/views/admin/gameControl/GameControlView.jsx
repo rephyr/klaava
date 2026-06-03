@@ -5,11 +5,13 @@ import HiLoControl from '../hiLo/HiLoControl'
 import WheelControl from '../wheel/WheelControl'
 import KlaavaTransfer from '../transfer/KlaavaTransfer'
 import RouletteControl from '../roulette/RouletteControl'
+import MinigameControl from '../minigame/MinigameControl'
 import { formatKlaava } from '../../../utils/formatters'
 
 const PHASES = ['gambling', 'minigame', 'shop', 'result', 'wheel', 'hiLo', 'blackjack', 'roulette', 'loans']
 
 const GAMES = [
+  { id: 'minigame', label: 'Minigames' },
   { id: 'hiLo', label: 'Hi-Lo' },
   { id: 'blackjack', label: 'Blackjack' },
   { id: 'roulette', label: 'Roulette' },
@@ -136,6 +138,13 @@ function GameControlView() {
 
         {selectedGame && (
           <div className="bg-gray-900 rounded-2xl p-5">
+            {selectedGame === 'minigame' && (
+              <MinigameControl
+                players={players}
+                gameState={gameState}
+                refreshPlayers={refreshPlayers}
+              />
+            )}
             {selectedGame === 'hiLo' && (
               <HiLoControl
                 players={players}

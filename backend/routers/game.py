@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from database.connection import getDb
 from database.schemas import TournamentCreate, TournamentRead, GameStartRequest, GameSessionRead, GameAdvanceRequest, TransferRequest
 from database import crud
@@ -10,6 +11,7 @@ router = APIRouter(tags=["game"])
 _liveState = {
     "lastResult": None,
     "wheelAngle": 0,
+    "minigame": None,
 }
 
 def sessionToDict(session):
@@ -35,6 +37,7 @@ def getGameState(db: Session = Depends(getDb)):
         "lastResult": _liveState["lastResult"],
         "wheelAngle": _liveState["wheelAngle"],
         "wheelSegments": segments,
+        "minigame": _liveState["minigame"],
     }
     if session:
         return {
@@ -68,6 +71,7 @@ def startGame(data: GameStartRequest, db: Session = Depends(getDb)):
     if not session:
         raise HTTPException(status_code=400, detail="One or more players not found or already eliminated")
     _liveState["lastResult"] = None
+    _liveState["minigame"] = None
     return sessionToDict(session)
 
 @router.post("/game/advance")
@@ -122,7 +126,84 @@ def stopGame(db: Session = Depends(getDb)):
     if not session:
         raise HTTPException(status_code=404, detail="No active session")
     _liveState["lastResult"] = None
+    _liveState["minigame"] = None
     return {"message": "Game stopped"}
+
+
+class DoubleOrNothingRequest(BaseModel):
+    playerIds: list[int]
+    amount: int
+
+@router.post("/minigame/doubleOrNothing")
+def playDoubleOrNothing(data: DoubleOrNothingRequest, db: Session = Depends(getDb)):
+    results = []
+    for playerId in data.playerIds:
+        player = crud.getPlayer(db, playerId)
+        if not player or player.eliminated:
+            continue
+        actualAmount = min(data.amount, player.klaava)
+        won = random.random() < 0.5
+        if won:
+            player.klaava += actualAmount
+        else:
+            player.klaava -= actualAmount
+        results.append({
+            "playerId": player.id,
+            "name": player.name,
+            "result": "win" if won else "lose",
+            "amount": actualAmount,
+            "klaava": player.klaava,
+        })
+    db.commit()
+    _liveState["minigame"] = {"type": "doubleOrNothing", "results": results}
+    return {"results": results}
+
+
+@router.post("/minigame/lastRoll")
+def playLastRoll(db: Session = Depends(getDb)):
+    session = crud.getActiveSession(db)
+    if not session:
+        raise HTTPException(status_code=400, detail="No active game")
+    players = [sp.player for sp in session.sessionPlayers if sp.player and not sp.player.eliminated]
+    if len(players) < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 active players")
+
+    rolls = {p.id: random.randint(1, 6) for p in players}
+    minRoll = min(rolls.values())
+    maxRoll = max(rolls.values())
+
+    if minRoll == maxRoll:
+        results = [{"playerId": p.id, "name": p.name, "roll": rolls[p.id], "outcome": "tie", "klaava": p.klaava} for p in players]
+        _liveState["minigame"] = {"type": "lastRoll", "results": results, "amount": 0}
+        return {"results": results, "amount": 0}
+
+    amount = session.currentMinBet
+    losers = [p for p in players if rolls[p.id] == minRoll]
+    winners = [p for p in players if rolls[p.id] == maxRoll]
+
+    totalLost = sum(min(amount, p.klaava) for p in losers)
+    for p in losers:
+        p.klaava -= min(amount, p.klaava)
+
+    perWinner = totalLost // len(winners)
+    remainder = totalLost % len(winners)
+    for i, p in enumerate(winners):
+        p.klaava += perWinner + (1 if i < remainder else 0)
+
+    db.commit()
+
+    results = []
+    for p in players:
+        if rolls[p.id] == minRoll:
+            outcome = "loser"
+        elif rolls[p.id] == maxRoll:
+            outcome = "winner"
+        else:
+            outcome = "neutral"
+        results.append({"playerId": p.id, "name": p.name, "roll": rolls[p.id], "outcome": outcome, "klaava": p.klaava})
+
+    _liveState["minigame"] = {"type": "lastRoll", "results": results, "amount": amount}
+    return {"results": results, "amount": amount}
 
 @router.get("/game/session", response_model=GameSessionRead)
 def getSession(db: Session = Depends(getDb)):
