@@ -7,9 +7,11 @@ import KlaavaTransfer from '../transfer/KlaavaTransfer'
 import RouletteControl from '../roulette/RouletteControl'
 import MinigameControl from '../minigame/MinigameControl'
 import AuctionControl from '../auction/AuctionControl'
+import RoundFlowBar from './RoundFlowBar'
+import EndRoundPanel from '../endRound/EndRoundPanel'
 import { formatKlaava } from '../../../utils/formatters'
 
-const PHASES = ['gambling', 'minigame', 'shop', 'result', 'wheel', 'hiLo', 'blackjack', 'roulette', 'auction', 'loans']
+const PHASES = ['wheel', 'hiLo', 'blackjack', 'roulette', 'auction', 'shop', 'minigame', 'endRound', 'loans', 'gambling', 'result']
 
 const GAMES = [
   { id: 'minigame', label: 'Minigames' },
@@ -60,6 +62,8 @@ function GameControlView() {
     <div>
       <h2 className="text-xl font-semibold mb-6">Game Control</h2>
 
+      <RoundFlowBar phase={gameState.phase} />
+
       <div className="bg-gray-800 rounded-xl p-4 mb-8 flex gap-8 text-sm">
         <div>
           <p className="text-gray-500 text-xs mb-1">Phase</p>
@@ -82,6 +86,19 @@ function GameControlView() {
           <p className="font-semibold text-green-400">{formatKlaava(gameState.maxBet)}</p>
         </div>
       </div>
+
+      {gameState.phase === 'endRound' && (
+        <section className="mb-8">
+          <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">End of Round</p>
+          <div className="bg-gray-900 rounded-2xl p-5">
+            <EndRoundPanel
+              players={players}
+              onNextRound={() => handleAdvance({ nextRound: true, phase: 'wheel' })}
+              refreshPlayers={refreshPlayers}
+            />
+          </div>
+        </section>
+      )}
 
       <section className="mb-8">
         <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Set phase</p>

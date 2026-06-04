@@ -226,8 +226,16 @@ def updateSettings(db: Session, data: SettingsUpdate):
     db.refresh(settings)
     return settings
 
+DEFAULT_GAMES = ["Hi-Lo", "Blackjack", "Roulette", "Auction"]
+
 def getGames(db: Session):
-    return db.query(Game).all()
+    games = db.query(Game).all()
+    if not games:
+        for name in DEFAULT_GAMES:
+            db.add(Game(name=name, isActive=True))
+        db.commit()
+        games = db.query(Game).all()
+    return games
 
 def createGame(db: Session, data: GameCreate):
     game = Game(**data.model_dump())
