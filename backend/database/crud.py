@@ -130,10 +130,29 @@ def transferKlaava(db: Session, data: TransferRequest):
     winner = getPlayer(db, data.toPlayerId)
     if not loser or not winner:
         return None
-    if loser.klaava < data.amount:
+
+    loserPowerupTriggered = None
+    winnerPowerupTriggered = None
+    loserImmune = loser.powerup == "immunity"
+
+    if not loserImmune and loser.klaava < data.amount:
         return None
-    loser.klaava -= data.amount
-    winner.klaava += data.amount
+
+    effectiveAmount = data.amount
+    if winner.powerup in ("doubleDown", "jackpot"):
+        mult = 3 if winner.powerup == "jackpot" else 2
+        effectiveAmount *= mult
+        winnerPowerupTriggered = winner.powerup
+        winner.powerup = None
+
+    if loserImmune:
+        loserPowerupTriggered = "immunity"
+        loser.powerup = None
+    else:
+        loser.klaava -= effectiveAmount
+
+    winner.klaava += effectiveAmount
+
     session = getActiveSession(db)
     roundId = None
     if session:
@@ -143,15 +162,22 @@ def transferKlaava(db: Session, data: TransferRequest):
         ).first()
         if activeRound:
             roundId = activeRound.id
-    db.add(Transaction(playerId=loser.id, roundId=roundId, amount=-data.amount, type="bet"))
-    db.add(Transaction(playerId=winner.id, roundId=roundId, amount=data.amount, type="bet"))
-    if loser.klaava <= 0:
+    if not loserImmune:
+        db.add(Transaction(playerId=loser.id, roundId=roundId, amount=-effectiveAmount, type="bet"))
+    db.add(Transaction(playerId=winner.id, roundId=roundId, amount=effectiveAmount, type="bet"))
+    if not loserImmune and loser.klaava <= 0:
         loser.klaava = 0
         loser.eliminated = True
     db.commit()
     db.refresh(loser)
     db.refresh(winner)
-    return {"winner": winner, "loser": loser, "amount": data.amount}
+    return {
+        "winner": winner,
+        "loser": loser,
+        "amount": effectiveAmount,
+        "winnerPowerupTriggered": winnerPowerupTriggered,
+        "loserPowerupTriggered": loserPowerupTriggered,
+    }
 
 def getActiveSession(db: Session):
     return db.query(Tournament).filter(Tournament.status == "active").order_by(Tournament.id.desc()).first()

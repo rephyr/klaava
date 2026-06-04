@@ -94,7 +94,17 @@ def transferKlaava(data: TransferRequest, db: Session = Depends(getDb)):
     result = crud.transferKlaava(db, data)
     if not result:
         raise HTTPException(status_code=400, detail="Transfer failed — player not found or insufficient klaava")
-    _liveState["lastResult"] = f"{result['loser'].name} paid {data.amount} kl to {result['winner'].name}"
+    loserName = result['loser'].name
+    winnerName = result['winner'].name
+    amt = result['amount']
+    if result['loserPowerupTriggered'] == 'immunity':
+        msg = f"{loserName} used IMMUNITY — {winnerName} got {amt} kl from house"
+    elif result['winnerPowerupTriggered'] in ('doubleDown', 'jackpot'):
+        label = 'JACKPOT' if result['winnerPowerupTriggered'] == 'jackpot' else 'DD'
+        msg = f"{loserName} paid {amt} kl → {winnerName} ({label}!)"
+    else:
+        msg = f"{loserName} paid {amt} kl to {winnerName}"
+    _liveState["lastResult"] = msg
     return result
 
 @router.post("/game/wheel/spin")
@@ -143,16 +153,30 @@ def playDoubleOrNothing(data: DoubleOrNothingRequest, db: Session = Depends(getD
             continue
         actualAmount = min(data.amount, player.klaava)
         won = random.random() < 0.5
+        powerupTriggered = None
         if won:
-            player.klaava += actualAmount
+            effectiveGain = actualAmount
+            if player.powerup in ("doubleDown", "jackpot"):
+                mult = 3 if player.powerup == "jackpot" else 2
+                effectiveGain *= mult
+                powerupTriggered = player.powerup
+                player.powerup = None
+            player.klaava += effectiveGain
+            actualAmount = effectiveGain
         else:
-            player.klaava -= actualAmount
+            if player.powerup in ("shield", "immunity"):
+                powerupTriggered = player.powerup
+                player.powerup = None
+                actualAmount = 0
+            else:
+                player.klaava -= actualAmount
         results.append({
             "playerId": player.id,
             "name": player.name,
             "result": "win" if won else "lose",
             "amount": actualAmount,
             "klaava": player.klaava,
+            "powerupTriggered": powerupTriggered,
         })
     db.commit()
     _liveState["minigame"] = {"type": "doubleOrNothing", "results": results}
@@ -181,14 +205,29 @@ def playLastRoll(db: Session = Depends(getDb)):
     losers = [p for p in players if rolls[p.id] == minRoll]
     winners = [p for p in players if rolls[p.id] == maxRoll]
 
-    totalLost = sum(min(amount, p.klaava) for p in losers)
+    blockedLosers = {}
+    totalLost = 0
     for p in losers:
-        p.klaava -= min(amount, p.klaava)
+        if p.powerup in ("shield", "immunity"):
+            blockedLosers[p.id] = p.powerup
+            p.powerup = None
+        else:
+            actual = min(amount, p.klaava)
+            p.klaava -= actual
+            totalLost += actual
 
+    boostedWinners = {}
     perWinner = totalLost // len(winners)
     remainder = totalLost % len(winners)
     for i, p in enumerate(winners):
-        p.klaava += perWinner + (1 if i < remainder else 0)
+        base = perWinner + (1 if i < remainder else 0)
+        if p.powerup in ("doubleDown", "jackpot"):
+            mult = 3 if p.powerup == "jackpot" else 2
+            boostedWinners[p.id] = p.powerup
+            p.powerup = None
+            p.klaava += base * mult
+        else:
+            p.klaava += base
 
     db.commit()
 
@@ -196,11 +235,14 @@ def playLastRoll(db: Session = Depends(getDb)):
     for p in players:
         if rolls[p.id] == minRoll:
             outcome = "loser"
+            pt = blockedLosers.get(p.id)
         elif rolls[p.id] == maxRoll:
             outcome = "winner"
+            pt = boostedWinners.get(p.id)
         else:
             outcome = "neutral"
-        results.append({"playerId": p.id, "name": p.name, "roll": rolls[p.id], "outcome": outcome, "klaava": p.klaava})
+            pt = None
+        results.append({"playerId": p.id, "name": p.name, "roll": rolls[p.id], "outcome": outcome, "klaava": p.klaava, "powerupTriggered": pt})
 
     _liveState["minigame"] = {"type": "lastRoll", "results": results, "amount": amount}
     return {"results": results, "amount": amount}

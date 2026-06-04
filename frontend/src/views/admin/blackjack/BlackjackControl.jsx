@@ -124,14 +124,21 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
             {player.status !== 'active' && !player.result && (
               <span className="text-xs text-gray-400 capitalize">{player.status}</span>
             )}
-            {player.result && (
-              <span className={`text-sm font-bold capitalize ${RESULT_COLOR[player.result]}`}>
-                {player.result === 'win' && `WIN +${formatKlaava(player.amount)}`}
-                {player.result === 'lose' && `LOSE -${formatKlaava(player.amount)}`}
-                {player.result === 'push' && 'PUSH'}
-                {player.result === 'blackjack' && `BLACKJACK +${formatKlaava(Math.ceil(player.amount * 1.5))}`}
-              </span>
-            )}
+            {player.result && (() => {
+              const blocked = ['shield', 'immunity'].includes(player.powerupTriggered)
+              const MULT = { doubleDown: 2, jackpot: 3 }
+              const mult = MULT[player.powerupTriggered] ?? 1
+              const boostLabel = player.powerupTriggered === 'jackpot' ? ' JACKPOT!' : player.powerupTriggered === 'doubleDown' ? ' DD!' : ''
+              return (
+                <span className={`text-sm font-bold ${blocked ? 'text-blue-300' : RESULT_COLOR[player.result]}`}>
+                  {blocked && player.powerupTriggered.toUpperCase()}
+                  {!blocked && player.result === 'win' && `WIN +${formatKlaava(player.amount * mult)}${boostLabel}`}
+                  {!blocked && player.result === 'lose' && `LOSE -${formatKlaava(player.amount)}`}
+                  {!blocked && player.result === 'push' && 'PUSH'}
+                  {!blocked && player.result === 'blackjack' && `BLACKJACK +${formatKlaava(Math.ceil(player.amount * 1.5) * mult)}${boostLabel}`}
+                </span>
+              )
+            })()}
           </div>
         </div>
       ))}

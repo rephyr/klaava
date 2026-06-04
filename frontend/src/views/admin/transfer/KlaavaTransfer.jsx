@@ -15,13 +15,20 @@ function KlaavaTransfer({ players, setPlayers, gameState }) {
       setPlayers((prev) =>
         prev
           .map((p) => {
-            if (p.id === result.winner.id) return { ...p, klaava: result.winner.klaava, eliminated: result.winner.eliminated }
-            if (p.id === result.loser.id) return { ...p, klaava: result.loser.klaava, eliminated: result.loser.eliminated }
+            if (p.id === result.winner.id) return { ...p, klaava: result.winner.klaava, eliminated: result.winner.eliminated, powerup: result.winner.powerup }
+            if (p.id === result.loser.id) return { ...p, klaava: result.loser.klaava, eliminated: result.loser.eliminated, powerup: result.loser.powerup }
             return p
           })
           .filter((p) => !p.eliminated)
       )
-      setFeedback(`${result.loser.name} paid ${formatKlaava(result.amount)} to ${result.winner.name}`)
+      let msg = `${result.loser.name} paid ${formatKlaava(result.amount)} to ${result.winner.name}`
+      if (result.loserPowerupTriggered === 'immunity') {
+        msg = `${result.loser.name} used IMMUNITY — ${result.winner.name} got ${formatKlaava(result.amount)} from house`
+      } else if (result.winnerPowerupTriggered) {
+        const label = result.winnerPowerupTriggered === 'jackpot' ? 'JACKPOT!' : 'DD!'
+        msg = `${result.loser.name} paid ${formatKlaava(result.amount)} to ${result.winner.name} — ${label}`
+      }
+      setFeedback(msg)
       setWinner('')
       setLoser('')
       setAmount('')

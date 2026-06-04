@@ -56,6 +56,7 @@ def placeBet(data: BetRequest):
         existing["guess"] = data.guess
         existing["amount"] = data.amount
         existing["result"] = None
+        existing["powerupTriggered"] = None
     else:
         _state["bets"].append({
             "playerId": data.playerId,
@@ -63,6 +64,7 @@ def placeBet(data: BetRequest):
             "guess": data.guess,
             "amount": data.amount,
             "result": None,
+            "powerupTriggered": None,
         })
     return _state["bets"]
 
@@ -85,12 +87,23 @@ def revealCard(db: Session = Depends(getDb)):
             continue
         correct = bet["guess"] == cardResult or (cardResult == "equal")
         bet["result"] = "correct" if correct else "wrong"
+        bet["powerupTriggered"] = None
         if correct:
-            player.klaava += bet["amount"]
+            gain = bet["amount"]
+            if player.powerup in ("doubleDown", "jackpot"):
+                mult = 3 if player.powerup == "jackpot" else 2
+                gain *= mult
+                bet["powerupTriggered"] = player.powerup
+                player.powerup = None
+            player.klaava += gain
         else:
-            player.klaava = max(0, player.klaava - bet["amount"])
-            if player.klaava == 0:
-                player.eliminated = True
+            if player.powerup in ("shield", "immunity"):
+                bet["powerupTriggered"] = player.powerup
+                player.powerup = None
+            else:
+                player.klaava = max(0, player.klaava - bet["amount"])
+                if player.klaava == 0:
+                    player.eliminated = True
     db.commit()
     return _state
 

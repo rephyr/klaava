@@ -6,15 +6,17 @@ import WheelControl from '../wheel/WheelControl'
 import KlaavaTransfer from '../transfer/KlaavaTransfer'
 import RouletteControl from '../roulette/RouletteControl'
 import MinigameControl from '../minigame/MinigameControl'
+import AuctionControl from '../auction/AuctionControl'
 import { formatKlaava } from '../../../utils/formatters'
 
-const PHASES = ['gambling', 'minigame', 'shop', 'result', 'wheel', 'hiLo', 'blackjack', 'roulette', 'loans']
+const PHASES = ['gambling', 'minigame', 'shop', 'result', 'wheel', 'hiLo', 'blackjack', 'roulette', 'auction', 'loans']
 
 const GAMES = [
   { id: 'minigame', label: 'Minigames' },
   { id: 'hiLo', label: 'Hi-Lo' },
   { id: 'blackjack', label: 'Blackjack' },
   { id: 'roulette', label: 'Roulette' },
+  { id: 'auction', label: 'Auction' },
   { id: 'wheel', label: 'Wheel' },
   { id: 'transfer', label: 'Klaava Transfer' },
 ]
@@ -163,6 +165,14 @@ function GameControlView() {
             )}
             {selectedGame === 'roulette' && (
               <RouletteControl
+                players={players}
+                gameState={gameState}
+                onPhaseChange={(phase) => handleAdvance({ phase })}
+                refreshPlayers={refreshPlayers}
+              />
+            )}
+            {selectedGame === 'auction' && (
+              <AuctionControl
                 players={players}
                 gameState={gameState}
                 onPhaseChange={(phase) => handleAdvance({ phase })}

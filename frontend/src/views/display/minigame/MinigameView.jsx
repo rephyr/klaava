@@ -8,23 +8,37 @@ function DoubleOrNothingResult({ results }) {
         <p className="text-4xl font-bold">Flip Results</p>
       </div>
       <div className="grid grid-cols-2 gap-4 w-full">
-        {results.map((r) => (
-          <div
-            key={r.playerId}
-            className={`rounded-2xl p-6 flex flex-col items-center gap-2 ${
-              r.result === 'win' ? 'bg-green-900' : 'bg-red-900'
-            }`}
-          >
-            <p className="text-xl font-bold">{r.name}</p>
-            <p className={`text-5xl font-black ${r.result === 'win' ? 'text-green-300' : 'text-red-300'}`}>
-              {r.result === 'win' ? 'WIN' : 'LOSE'}
-            </p>
-            <p className={`text-2xl font-semibold ${r.result === 'win' ? 'text-green-400' : 'text-red-400'}`}>
-              {r.result === 'win' ? '+' : '-'}{formatKlaava(r.amount)}
-            </p>
-            <p className="text-gray-400 text-sm">{formatKlaava(r.klaava)}</p>
-          </div>
-        ))}
+        {results.map((r) => {
+          const blocked = ['shield', 'immunity'].includes(r.powerupTriggered)
+          return (
+            <div
+              key={r.playerId}
+              className={`rounded-2xl p-6 flex flex-col items-center gap-2 ${
+                r.result === 'win' ? 'bg-green-900'
+                : blocked ? 'bg-blue-900'
+                : 'bg-red-900'
+              }`}
+            >
+              <p className="text-xl font-bold">{r.name}</p>
+              {blocked ? (
+                <>
+                  <p className="text-5xl font-black text-blue-300 uppercase">{r.powerupTriggered}</p>
+                  <p className="text-2xl font-semibold text-blue-400">blocked</p>
+                </>
+              ) : (
+                <>
+                  <p className={`text-5xl font-black ${r.result === 'win' ? 'text-green-300' : 'text-red-300'}`}>
+                    {r.result === 'win' ? 'WIN' : 'LOSE'}
+                  </p>
+                  <p className={`text-2xl font-semibold ${r.result === 'win' ? 'text-green-400' : 'text-red-400'}`}>
+                    {r.result === 'win' ? '+' : '-'}{formatKlaava(r.amount)}
+                  </p>
+                </>
+              )}
+              <p className="text-gray-400 text-sm">{formatKlaava(r.klaava)}</p>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -43,25 +57,30 @@ function LastRollResult({ results, amount }) {
         )}
       </div>
       <div className="grid grid-cols-2 gap-4 w-full">
-        {results.map((r) => (
-          <div
-            key={r.playerId}
-            className={`rounded-2xl p-6 flex flex-col items-center gap-2 ${
-              r.outcome === 'winner' ? 'bg-green-900'
-              : r.outcome === 'loser' ? 'bg-red-900'
-              : 'bg-gray-800'
-            }`}
-          >
-            <p className="text-xl font-bold">{r.name}</p>
-            <p className="text-7xl font-black leading-none">{r.roll}</p>
-            <p className={`text-sm uppercase tracking-widest font-semibold ${
-              r.outcome === 'winner' ? 'text-green-400'
-              : r.outcome === 'loser' ? 'text-red-400'
-              : 'text-gray-500'
-            }`}>{r.outcome}</p>
-            <p className="text-gray-400 text-sm">{formatKlaava(r.klaava)}</p>
-          </div>
-        ))}
+        {results.map((r) => {
+          const blocked = ['shield', 'immunity'].includes(r.powerupTriggered)
+          return (
+            <div
+              key={r.playerId}
+              className={`rounded-2xl p-6 flex flex-col items-center gap-2 ${
+                r.outcome === 'winner' ? 'bg-green-900'
+                : blocked ? 'bg-blue-900'
+                : r.outcome === 'loser' ? 'bg-red-900'
+                : 'bg-gray-800'
+              }`}
+            >
+              <p className="text-xl font-bold">{r.name}</p>
+              <p className="text-7xl font-black leading-none">{r.roll}</p>
+              <p className={`text-sm uppercase tracking-widest font-semibold ${
+                r.outcome === 'winner' ? 'text-green-400'
+                : blocked ? 'text-blue-300'
+                : r.outcome === 'loser' ? 'text-red-400'
+                : 'text-gray-500'
+              }`}>{blocked ? r.powerupTriggered : r.outcome}</p>
+              <p className="text-gray-400 text-sm">{formatKlaava(r.klaava)}</p>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

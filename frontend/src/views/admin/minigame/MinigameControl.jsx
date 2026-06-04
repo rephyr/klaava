@@ -103,41 +103,57 @@ function MinigameControl({ players, gameState, refreshPlayers }) {
           <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Result</p>
           {result.type === 'doubleOrNothing' && (
             <div className="flex gap-3 flex-wrap">
-              {result.results.map((r) => (
-                <div
-                  key={r.playerId}
-                  className={`rounded-xl px-5 py-3 text-sm ${r.result === 'win' ? 'bg-green-900' : 'bg-red-900'}`}
-                >
-                  <p className="font-semibold">{r.name}</p>
-                  <p className={`font-bold text-lg ${r.result === 'win' ? 'text-green-400' : 'text-red-400'}`}>
-                    {r.result === 'win' ? '+' : '-'}{formatKlaava(r.amount)}
-                  </p>
-                  <p className="text-xs text-gray-400">{formatKlaava(r.klaava)} total</p>
-                </div>
-              ))}
+              {result.results.map((r) => {
+                const blocked = ['shield', 'immunity'].includes(r.powerupTriggered)
+                return (
+                  <div
+                    key={r.playerId}
+                    className={`rounded-xl px-5 py-3 text-sm ${
+                      r.result === 'win' ? 'bg-green-900'
+                      : blocked ? 'bg-blue-900'
+                      : 'bg-red-900'
+                    }`}
+                  >
+                    <p className="font-semibold">{r.name}</p>
+                    {blocked ? (
+                      <p className="font-bold text-lg text-blue-300 uppercase">{r.powerupTriggered}</p>
+                    ) : (
+                      <p className={`font-bold text-lg ${r.result === 'win' ? 'text-green-400' : 'text-red-400'}`}>
+                        {r.result === 'win' ? '+' : '-'}{formatKlaava(r.amount)}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-400">{formatKlaava(r.klaava)} total</p>
+                  </div>
+                )
+              })}
             </div>
           )}
           {result.type === 'lastRoll' && (
             <div className="flex gap-3 flex-wrap">
-              {result.results.map((r) => (
-                <div
-                  key={r.playerId}
-                  className={`rounded-xl px-5 py-3 text-center ${
-                    r.outcome === 'winner' ? 'bg-green-900'
-                    : r.outcome === 'loser' ? 'bg-red-900'
-                    : 'bg-gray-800'
-                  }`}
-                >
-                  <p className="text-sm font-semibold mb-1">{r.name}</p>
-                  <p className="text-4xl font-bold">{r.roll}</p>
-                  <p className={`text-xs mt-1 capitalize ${
-                    r.outcome === 'winner' ? 'text-green-400'
-                    : r.outcome === 'loser' ? 'text-red-400'
-                    : r.outcome === 'tie' ? 'text-gray-400'
-                    : 'text-gray-500'
-                  }`}>{r.outcome}</p>
-                </div>
-              ))}
+              {result.results.map((r) => {
+                const blocked = ['shield', 'immunity'].includes(r.powerupTriggered)
+                return (
+                  <div
+                    key={r.playerId}
+                    className={`rounded-xl px-5 py-3 text-center ${
+                      r.outcome === 'winner' ? 'bg-green-900'
+                      : blocked ? 'bg-blue-900'
+                      : r.outcome === 'loser' ? 'bg-red-900'
+                      : 'bg-gray-800'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold mb-1">{r.name}</p>
+                    <p className="text-4xl font-bold">{r.roll}</p>
+                    <p className={`text-xs mt-1 capitalize ${
+                      r.outcome === 'winner' ? 'text-green-400'
+                      : blocked ? 'text-blue-300'
+                      : r.outcome === 'loser' ? 'text-red-400'
+                      : r.outcome === 'tie' ? 'text-gray-400'
+                      : 'text-gray-500'
+                    }`}>{blocked ? r.powerupTriggered : r.outcome}</p>
+                  </div>
+                )
+              })}
             </div>
           )}
         </section>

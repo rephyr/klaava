@@ -10,3 +10,10 @@ export function buyPowerup(playerId, powerupId) {
     body: JSON.stringify({ playerId, powerupId }),
   })
 }
+
+export function useItem(playerId, targetId = null) {
+  return apiFetch('/shop/use', {
+    method: 'POST',
+    body: JSON.stringify({ playerId, targetId }),
+  })
+}

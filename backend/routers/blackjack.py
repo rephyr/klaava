@@ -71,6 +71,7 @@ def startBlackjack(data: BjStartRequest):
             "total": total,
             "status": status,
             "result": None,
+            "powerupTriggered": None,
         })
     dealerHand = [_bj["deck"].pop(), _bj["deck"].pop()]
     _bj["dealer"] = {
@@ -125,18 +126,38 @@ def dealerPlay(db: Session = Depends(getDb)):
         amount = int(player["amount"])
         if player["status"] == "bust":
             player["result"] = "lose"
-            db_player.klaava = max(0, db_player.klaava - amount)
+            if db_player.powerup in ("shield", "immunity"):
+                player["powerupTriggered"] = db_player.powerup
+                db_player.powerup = None
+            else:
+                db_player.klaava = max(0, db_player.klaava - amount)
         elif player["status"] == "blackjack":
             player["result"] = "blackjack"
-            db_player.klaava += math.ceil(amount * 1.5)
+            gain = math.ceil(amount * 1.5)
+            if db_player.powerup in ("doubleDown", "jackpot"):
+                mult = 3 if db_player.powerup == "jackpot" else 2
+                gain *= mult
+                player["powerupTriggered"] = db_player.powerup
+                db_player.powerup = None
+            db_player.klaava += gain
         elif dealerBust or pTotal > dealerTotal:
             player["result"] = "win"
-            db_player.klaava += amount
+            gain = amount
+            if db_player.powerup in ("doubleDown", "jackpot"):
+                mult = 3 if db_player.powerup == "jackpot" else 2
+                gain *= mult
+                player["powerupTriggered"] = db_player.powerup
+                db_player.powerup = None
+            db_player.klaava += gain
         elif pTotal == dealerTotal:
             player["result"] = "push"
         else:
             player["result"] = "lose"
-            db_player.klaava = max(0, db_player.klaava - amount)
+            if db_player.powerup in ("shield", "immunity"):
+                player["powerupTriggered"] = db_player.powerup
+                db_player.powerup = None
+            else:
+                db_player.klaava = max(0, db_player.klaava - amount)
         if db_player.klaava == 0:
             db_player.eliminated = True
     db.commit()

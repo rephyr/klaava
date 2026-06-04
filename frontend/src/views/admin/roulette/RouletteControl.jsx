@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { startRoulette, spin, resetRoulette, placeBet } from '../../../services/rouletteService'
+import { useEffect, useState } from 'react'
+import { startRoulette, spin, resetRoulette, placeBet, getRouletteState } from '../../../services/rouletteService'
 import { formatKlaava } from '../../../utils/formatters'
 
 const COLOR_STYLE = {
@@ -17,6 +17,10 @@ const RESULT_NUMBER_COLOR = {
 function RouletteControl({ players, gameState, onPhaseChange, refreshPlayers }) {
   const [state, setState] = useState(null)
   const [bets, setBets] = useState({})
+
+  useEffect(() => {
+    getRouletteState().then(setState)
+  }, [])
 
   function defaultBet() {
     return { betType: 'color', betValue: 'red', amount: gameState.minBet }
@@ -167,13 +171,21 @@ function RouletteControl({ players, gameState, onPhaseChange, refreshPlayers }) 
                 </>
               )}
 
-              {betResult?.result && (
-                <span className={`text-sm font-bold ml-auto ${betResult.result === 'win' ? 'text-green-400' : 'text-red-400'}`}>
-                  {betResult.result === 'win'
-                    ? `WIN +${formatKlaava(betResult.payout)}`
-                    : `LOSE -${formatKlaava(betResult.amount)}`}
-                </span>
-              )}
+              {betResult?.result && (() => {
+                const blocked = ['shield', 'immunity'].includes(betResult.powerupTriggered)
+                const boostLabel = betResult.powerupTriggered === 'jackpot' ? ' JACKPOT!' : betResult.powerupTriggered === 'doubleDown' ? ' DD!' : ''
+                return (
+                  <span className={`text-sm font-bold ml-auto ${
+                    blocked ? 'text-blue-300'
+                    : betResult.result === 'win' ? 'text-green-400'
+                    : 'text-red-400'
+                  }`}>
+                    {blocked && betResult.powerupTriggered.toUpperCase()}
+                    {!blocked && betResult.result === 'win' && `WIN +${formatKlaava(betResult.payout)}${boostLabel}`}
+                    {!blocked && betResult.result === 'lose' && `LOSE -${formatKlaava(betResult.amount)}`}
+                  </span>
+                )
+              })()}
             </div>
           )
         })}

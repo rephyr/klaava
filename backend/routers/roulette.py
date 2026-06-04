@@ -90,14 +90,25 @@ def spin(db: Session = Depends(getDb)):
         elif bet["betType"] == "number":
             won = int(bet["betValue"]) == result
             payout = bet["amount"] * 35
+        bet["powerupTriggered"] = None
         bet["result"] = "win" if won else "lose"
-        bet["payout"] = payout
         if won:
+            if player.powerup in ("doubleDown", "jackpot"):
+                mult = 3 if player.powerup == "jackpot" else 2
+                payout *= mult
+                bet["powerupTriggered"] = player.powerup
+                player.powerup = None
+            bet["payout"] = payout
             player.klaava += payout
         else:
-            player.klaava = max(0, player.klaava - bet["amount"])
-            if player.klaava == 0:
-                player.eliminated = True
+            bet["payout"] = payout
+            if player.powerup in ("shield", "immunity"):
+                bet["powerupTriggered"] = player.powerup
+                player.powerup = None
+            else:
+                player.klaava = max(0, player.klaava - bet["amount"])
+                if player.klaava == 0:
+                    player.eliminated = True
     db.commit()
     return _state
 
