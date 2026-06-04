@@ -8,6 +8,11 @@ router = APIRouter(prefix="/loans", tags=["loans"])
 
 @router.post("/", response_model=LoanRead)
 def createLoan(data: LoanCreate, db: Session = Depends(getDb)):
+    settings = crud.getSettings(db)
+    if data.amount > settings.maxLoanAmount:
+        raise HTTPException(status_code=400, detail=f"Loan exceeds max allowed amount of {settings.maxLoanAmount}")
+    if data.interestRate is None:
+        data = data.model_copy(update={"interestRate": settings.loanInterestRate})
     return crud.createLoan(db, data)
 
 @router.get("/{playerId}", response_model=list[LoanRead])

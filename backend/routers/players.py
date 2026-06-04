@@ -19,6 +19,9 @@ def getPlayer(playerId: int, db: Session = Depends(getDb)):
 
 @router.post("/", response_model=PlayerRead)
 def createPlayer(data: PlayerCreate, db: Session = Depends(getDb)):
+    if data.klaava is None:
+        settings = crud.getSettings(db)
+        data = data.model_copy(update={"klaava": settings.startingKlaava})
     return crud.createPlayer(db, data)
 
 @router.put("/{playerId}", response_model=PlayerRead)

@@ -5,7 +5,16 @@ def testGetGameState(client):
     assert "phase" in data
     assert "round" in data
     assert "level" in data
-    assert "stake" in data
+    assert "minBet" in data
+    assert "maxBet" in data
+    assert "betMultiplier" in data
+
+def testGameStateReflectsSettings(client):
+    client.put("/settings/", json={"minBet": 100, "maxBet": 400, "gameMode": "sit_and_go"})
+    data = client.get("/game").json()
+    assert data["minBet"] == 100
+    assert data["maxBet"] == 400
+    assert data["gameMode"] == "sit_and_go"
 
 def testCreateTournament(client):
     res = client.post("/tournaments", json={"mode": "tournament"})
