@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getGameState, getSession, advanceGame } from '../../../services/gameService'
+import { getGameState, getSession, advanceGame, endGame } from '../../../services/gameService'
 import { getGames } from '../../../services/gamesService'
 import BlackjackControl from '../blackjack/BlackjackControl'
 import HiLoControl from '../hiLo/HiLoControl'
@@ -49,11 +49,16 @@ function GameControlView() {
     if (gameState?.sessionId) {
       getSession().then((s) => setPlayers(s.players.filter((p) => !p.eliminated)))
     }
-  }, [gameState?.sessionId])
+  }, [gameState?.sessionId, gameState?.phase])
 
   async function handleAdvance(data) {
     const updated = await advanceGame(data)
     setGameState((prev) => ({ ...prev, ...updated }))
+  }
+
+  async function handleEndGame() {
+    const result = await endGame()
+    setGameState((prev) => ({ ...prev, phase: result.phase }))
   }
 
   function refreshPlayers() {
@@ -91,6 +96,21 @@ function GameControlView() {
       <h2 className="text-xl font-semibold mb-6">Game Control</h2>
 
       <RoundFlowBar phase={phase} />
+
+      {players.length === 1 && phase !== 'finished' && (
+        <div className="bg-yellow-900 border border-yellow-700 rounded-xl px-5 py-4 mb-4 flex items-center justify-between">
+          <div>
+            <p className="font-semibold text-yellow-300">Last player standing</p>
+            <p className="text-yellow-400 text-sm">{players[0]?.name} wins!</p>
+          </div>
+          <button
+            onClick={handleEndGame}
+            className="bg-yellow-600 hover:bg-yellow-500 text-white font-semibold px-5 py-2 rounded-lg"
+          >
+            End Game
+          </button>
+        </div>
+      )}
 
       <div className="bg-gray-800 rounded-xl p-4 mb-6 flex gap-8 items-center text-sm">
         <div>
@@ -258,12 +278,18 @@ function GameControlView() {
         </div>
       </section>
 
-      <section>
+      <section className="flex gap-3 flex-wrap">
         <button
           onClick={() => handleAdvance({ nextLevel: true })}
           className="bg-yellow-700 hover:bg-yellow-600 text-white text-sm px-4 py-2 rounded"
         >
           Next level — bets become {formatKlaava(nextMinBet)} / {formatKlaava(nextMaxBet)}
+        </button>
+        <button
+          onClick={handleEndGame}
+          className="bg-red-900 hover:bg-red-800 text-red-300 text-sm px-4 py-2 rounded"
+        >
+          End Game
         </button>
       </section>
     </div>

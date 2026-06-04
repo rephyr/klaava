@@ -13,6 +13,7 @@ import LoanView from './loans/LoanView'
 import RouletteView from './roulette/RouletteView'
 import AuctionView from './auction/AuctionView'
 import EndRoundView from './endRound/EndRoundView'
+import FinishedView from './finished/FinishedView'
 
 const POLL_INTERVAL = 3000
 
@@ -59,14 +60,7 @@ function DisplayView() {
     if (phase === 'roulette')  return <RouletteView />
     if (phase === 'auction')   return <AuctionView />
     if (phase === 'endRound')  return <EndRoundView session={session} />
-    if (phase === 'finished') {
-      return (
-        <div className="flex flex-col items-center justify-center flex-1 gap-3">
-          <p className="text-5xl font-bold">Game Over</p>
-          <p className="text-gray-400">Thanks for playing</p>
-        </div>
-      )
-    }
+    if (phase === 'finished') return <FinishedView gameState={gameState} />
     return null
   }
 

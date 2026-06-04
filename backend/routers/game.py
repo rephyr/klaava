@@ -140,6 +140,42 @@ def stopGame(db: Session = Depends(getDb)):
     _liveState["minigame"] = None
     return {"message": "Game stopped"}
 
+@router.post("/game/end")
+def endGame(db: Session = Depends(getDb)):
+    result = crud.endGame(db)
+    if not result:
+        raise HTTPException(status_code=404, detail="No active session")
+    _liveState["lastResult"] = None
+    _liveState["minigame"] = None
+    return {
+        "phase": "finished",
+        "leaderboard": [
+            {
+                "position": e.finalPosition,
+                "playerId": e.playerId,
+                "playerName": e.player.name,
+                "finalKlaava": e.finalKlaava,
+            }
+            for e in result["leaderboard"]
+        ],
+    }
+
+@router.get("/game/leaderboard")
+def getLeaderboard(db: Session = Depends(getDb)):
+    session = crud.getLastFinishedSession(db)
+    if not session:
+        raise HTTPException(status_code=404, detail="No finished session found")
+    entries = crud.getLeaderboard(db, session.id)
+    return [
+        {
+            "position": e.finalPosition,
+            "playerId": e.playerId,
+            "playerName": e.player.name,
+            "finalKlaava": e.finalKlaava,
+        }
+        for e in entries
+    ]
+
 
 class DoubleOrNothingRequest(BaseModel):
     playerIds: list[int]

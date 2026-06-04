@@ -33,3 +33,11 @@ export function transferKlaava(fromPlayerId, toPlayerId, amount) {
 export function spinWheel() {
   return apiFetch('/game/wheel/spin', { method: 'POST' })
 }
+
+export function endGame() {
+  return apiFetch('/game/end', { method: 'POST' })
+}
+
+export function getLeaderboard() {
+  return apiFetch('/game/leaderboard')
+}
