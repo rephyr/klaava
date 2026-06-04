@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from database.connection import getDb
 from database.schemas import TournamentCreate, TournamentRead, GameStartRequest, GameSessionRead, GameAdvanceRequest, TransferRequest
 from database import crud
+from routers import hiLo, blackjack, roulette, auction
 import random
 
 router = APIRouter(tags=["game"])
@@ -70,8 +71,16 @@ def startGame(data: GameStartRequest, db: Session = Depends(getDb)):
     session = crud.startGame(db, data)
     if not session:
         raise HTTPException(status_code=400, detail="One or more players not found or already eliminated")
+    # Reset all in-memory game states
+    hiLo.resetState()
+    blackjack.resetState()
+    roulette.resetState()
+    auction.resetState()
     _liveState["lastResult"] = None
+    _liveState["wheelAngle"] = 0
     _liveState["minigame"] = None
+    # Re-activate all games on the wheel
+    crud.resetAllGames(db)
     return sessionToDict(session)
 
 @router.post("/game/advance")

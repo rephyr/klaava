@@ -104,10 +104,22 @@ function GameControlView() {
             <p className="text-yellow-400 text-sm">{players[0]?.name} wins!</p>
           </div>
           <button
-            onClick={handleEndGame}
+            onClick={() => handleAdvance({ phase: 'finished' })}
             className="bg-yellow-600 hover:bg-yellow-500 text-white font-semibold px-5 py-2 rounded-lg"
           >
-            End Game
+            Show Winner Screen
+          </button>
+        </div>
+      )}
+
+      {phase === 'finished' && (
+        <div className="bg-gray-800 border border-gray-600 rounded-xl px-5 py-4 mb-4 flex items-center justify-between">
+          <p className="text-gray-300 text-sm">Winner screen is live on display</p>
+          <button
+            onClick={handleEndGame}
+            className="bg-red-800 hover:bg-red-700 text-white font-semibold px-5 py-2 rounded-lg"
+          >
+            End Game &amp; Save Results
           </button>
         </div>
       )}

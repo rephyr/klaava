@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database.connection import getDb
-from database.crud import getPlayer
+from database.crud import getPlayer, checkBankruptcy
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/auction", tags=["auction"])
@@ -84,6 +84,7 @@ def endAuction(db: Session = Depends(getDb)):
         raise HTTPException(status_code=400, detail=f"{player.name} already holds an item — clear it first")
     player.klaava -= topBid["amount"]
     player.powerup = _state["item"]["id"]
+    checkBankruptcy(db, player)
     db.commit()
     db.refresh(player)
     _state["status"] = "finished"
@@ -95,10 +96,13 @@ def endAuction(db: Session = Depends(getDb)):
     }
     return _state
 
-@router.post("/reset")
-def resetAuction():
+def resetState():
     _state["status"] = "idle"
     _state["item"] = None
     _state["bids"] = []
     _state["winner"] = None
+
+@router.post("/reset")
+def resetAuction():
+    resetState()
     return _state

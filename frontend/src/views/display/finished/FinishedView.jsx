@@ -1,12 +1,30 @@
 import { useEffect, useState } from 'react'
-import { getLeaderboard } from '../../../services/gameService'
+import { getLeaderboard, getSession } from '../../../services/gameService'
 import { formatKlaava } from '../../../utils/formatters'
 
 function FinishedView({ gameState }) {
   const [leaderboard, setLeaderboard] = useState([])
 
   useEffect(() => {
-    getLeaderboard().then(setLeaderboard).catch(() => {})
+    async function load() {
+      try {
+        const session = await getSession()
+        const sorted = (session?.players ?? [])
+          .sort((a, b) => a.eliminated === b.eliminated ? b.klaava - a.klaava : a.eliminated ? 1 : -1)
+        setLeaderboard(sorted.map((p, i) => ({
+          position: i + 1,
+          playerId: p.id,
+          playerName: p.name,
+          finalKlaava: p.klaava,
+        })))
+      } catch {}
+
+      try {
+        const saved = await getLeaderboard()
+        if (saved?.length > 0) setLeaderboard(saved)
+      } catch {}
+    }
+    load()
   }, [])
 
   const winner = leaderboard[0]

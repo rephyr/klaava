@@ -165,6 +165,8 @@ function RouletteControl({ players, gameState, onPhaseChange, refreshPlayers }) 
                   <input
                     type="number"
                     value={bet.amount}
+                    min={gameState.minBet}
+                    max={gameState.maxBet}
                     onChange={(e) => updateBet(player.id, player.name, { amount: Number(e.target.value) })}
                     className="bg-gray-700 rounded px-2 py-1 text-sm text-white w-20"
                   />

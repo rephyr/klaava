@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { startBlackjack, hit, stand, dealerPlay, resetBlackjack } from '../../../services/blackjackService'
+import { startBlackjack, hit, stand, split, doubleDown, dealerPlay, resetBlackjack } from '../../../services/blackjackService'
 import { formatKlaava } from '../../../utils/formatters'
 
 const RESULT_COLOR = {
@@ -9,8 +9,51 @@ const RESULT_COLOR = {
   blackjack: 'text-yellow-400',
 }
 
+function HandRow({ label, cards, total, status, result, amount, powerupTriggered, onHit, onStand, onDouble }) {
+  const canHit    = status === 'active'
+  const canDouble = status === 'active' && cards.length === 2
+
+  const blocked  = ['shield', 'immunity'].includes(powerupTriggered)
+  const MULT     = { doubleDown: 2, jackpot: 3 }
+  const mult     = MULT[powerupTriggered] ?? 1
+  const boostLbl = powerupTriggered === 'jackpot' ? ' JACKPOT!' : powerupTriggered === 'doubleDown' ? ' DD!' : ''
+
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      {label && <span className="text-xs text-gray-500 w-10">{label}</span>}
+      <p className="text-sm text-gray-300 min-w-36">
+        {cards.map((c) => `${c.label}${c.suit}`).join(' ')} = <span className="font-bold">{total}</span>
+        {amount && <span className="text-gray-500 ml-2">{formatKlaava(amount)}</span>}
+      </p>
+      <div className="flex gap-1.5 flex-wrap">
+        {canHit && (
+          <>
+            <button onClick={onHit}    className="bg-green-700 hover:bg-green-600 text-white text-xs px-3 py-1.5 rounded">Hit</button>
+            <button onClick={onStand}  className="bg-gray-600 hover:bg-gray-500 text-white text-xs px-3 py-1.5 rounded">Stand</button>
+          </>
+        )}
+        {canDouble && (
+          <button onClick={onDouble} className="bg-blue-700 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded">2×</button>
+        )}
+        {!canHit && !result && (
+          <span className="text-xs text-gray-400 capitalize">{status}</span>
+        )}
+        {result && (
+          <span className={`text-sm font-bold ${blocked ? 'text-blue-300' : RESULT_COLOR[result]}`}>
+            {blocked && powerupTriggered.toUpperCase()}
+            {!blocked && result === 'win'       && `WIN +${formatKlaava(amount * mult)}${boostLbl}`}
+            {!blocked && result === 'lose'      && `LOSE -${formatKlaava(amount)}`}
+            {!blocked && result === 'push'      && 'PUSH'}
+            {!blocked && result === 'blackjack' && `BLACKJACK +${formatKlaava(Math.ceil(amount * 1.5) * mult)}${boostLbl}`}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }) {
-  const [bets, setBets] = useState({})
+  const [bets, setBets]       = useState({})
   const [bjState, setBjState] = useState(null)
 
   const activePlayers = players.filter((p) => !p.eliminated)
@@ -21,24 +64,18 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
       playerName: p.name,
       amount: Number(bets[p.id] ?? defaultBet),
     }))
-    const state = await startBlackjack(betList)
-    setBjState(state)
+    setBjState(await startBlackjack(betList))
     onStateChange('blackjack')
   }
 
-  async function handleHit(playerId) {
-    const state = await hit(playerId)
-    setBjState(state)
-  }
+  async function call(fn, ...args) { setBjState(await fn(...args)) }
 
-  async function handleStand(playerId) {
-    const state = await stand(playerId)
-    setBjState(state)
-  }
+  const allDone = bjState?.players.every(
+    (p) => p.status !== 'active' && (!p.splitHand || p.splitStatus !== 'active')
+  )
 
   async function handleDealer() {
-    const state = await dealerPlay()
-    setBjState(state)
+    setBjState(await dealerPlay())
     onStateChange('blackjack')
     refreshPlayers?.()
   }
@@ -48,8 +85,6 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
     setBjState(null)
     setBets({})
   }
-
-  const allDone = bjState?.players.every((p) => p.status !== 'active')
 
   if (!bjState || bjState.status === 'idle') {
     return (
@@ -64,6 +99,7 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
                 <input
                   type="number"
                   value={bets[p.id] ?? defaultBet}
+                  min={defaultBet}
                   onChange={(e) => setBets((prev) => ({ ...prev, [p.id]: e.target.value }))}
                   className="bg-gray-700 rounded px-2 py-1 text-sm text-white w-20"
                 />
@@ -85,78 +121,75 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
   return (
     <div className="flex flex-col gap-3">
 
-      <div className="bg-gray-900 rounded-xl p-3 flex flex-col gap-1">
+      <div className="bg-gray-900 rounded-xl p-3">
         <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Dealer</p>
         <p className="text-sm">
           {bjState.dealer.hand.map((c) => `${c.label}${c.suit}`).join(' ')}
           {bjState.dealer.hiddenCard ? ' ?' : ''}
-          {' '}
-          <span className="text-gray-400">= {bjState.dealer.hiddenCard ? '?' : bjState.dealer.total}</span>
+          {' '}<span className="text-gray-400">= {bjState.dealer.hiddenCard ? '?' : bjState.dealer.total}</span>
         </p>
       </div>
 
-      {bjState.players.map((player) => (
-        <div key={player.playerId} className="bg-gray-800 rounded-xl px-4 py-3 flex items-center gap-4">
-          <div className="w-24">
-            <p className="font-medium text-sm">{player.playerName}</p>
-            <p className="text-xs text-gray-400">{formatKlaava(player.amount)} bet</p>
-          </div>
-          <p className="text-sm text-gray-300 w-40">
-            {player.hand.map((c) => `${c.label}${c.suit}`).join(' ')} = <span className="font-bold">{player.total}</span>
-          </p>
-          <div className="flex gap-2">
-            {player.status === 'active' && (
-              <>
+      {bjState.players.map((player) => {
+        const canSplit = player.status === 'active' &&
+          player.hand.length === 2 &&
+          player.hand[0].value === player.hand[1].value &&
+          !player.splitHand
+
+        return (
+          <div key={player.playerId} className="bg-gray-800 rounded-xl px-4 py-3 flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <p className="font-medium text-sm w-24">{player.playerName}</p>
+              <p className="text-xs text-gray-400">{formatKlaava(player.amount)} bet</p>
+              {canSplit && (
                 <button
-                  onClick={() => handleHit(player.playerId)}
-                  className="bg-green-700 hover:bg-green-600 text-white text-xs px-3 py-1.5 rounded"
+                  onClick={() => call(split, player.playerId)}
+                  className="bg-yellow-700 hover:bg-yellow-600 text-white text-xs px-3 py-1.5 rounded ml-auto"
                 >
-                  Hit
+                  Split
                 </button>
-                <button
-                  onClick={() => handleStand(player.playerId)}
-                  className="bg-gray-600 hover:bg-gray-500 text-white text-xs px-3 py-1.5 rounded"
-                >
-                  Stand
-                </button>
-              </>
+              )}
+            </div>
+
+            <HandRow
+              label={player.splitHand ? 'A' : null}
+              cards={player.hand}
+              total={player.total}
+              status={player.status}
+              result={player.result}
+              amount={player.amount}
+              powerupTriggered={player.powerupTriggered}
+              onHit={() => call(hit, player.playerId, 'main')}
+              onStand={() => call(stand, player.playerId, 'main')}
+              onDouble={() => call(doubleDown, player.playerId, 'main')}
+            />
+
+            {player.splitHand && (
+              <HandRow
+                label="B"
+                cards={player.splitHand}
+                total={player.splitTotal}
+                status={player.splitStatus}
+                result={player.splitResult}
+                amount={player.splitAmount}
+                powerupTriggered={null}
+                onHit={() => call(hit, player.playerId, 'split')}
+                onStand={() => call(stand, player.playerId, 'split')}
+                onDouble={() => call(doubleDown, player.playerId, 'split')}
+              />
             )}
-            {player.status !== 'active' && !player.result && (
-              <span className="text-xs text-gray-400 capitalize">{player.status}</span>
-            )}
-            {player.result && (() => {
-              const blocked = ['shield', 'immunity'].includes(player.powerupTriggered)
-              const MULT = { doubleDown: 2, jackpot: 3 }
-              const mult = MULT[player.powerupTriggered] ?? 1
-              const boostLabel = player.powerupTriggered === 'jackpot' ? ' JACKPOT!' : player.powerupTriggered === 'doubleDown' ? ' DD!' : ''
-              return (
-                <span className={`text-sm font-bold ${blocked ? 'text-blue-300' : RESULT_COLOR[player.result]}`}>
-                  {blocked && player.powerupTriggered.toUpperCase()}
-                  {!blocked && player.result === 'win' && `WIN +${formatKlaava(player.amount * mult)}${boostLabel}`}
-                  {!blocked && player.result === 'lose' && `LOSE -${formatKlaava(player.amount)}`}
-                  {!blocked && player.result === 'push' && 'PUSH'}
-                  {!blocked && player.result === 'blackjack' && `BLACKJACK +${formatKlaava(Math.ceil(player.amount * 1.5) * mult)}${boostLabel}`}
-                </span>
-              )
-            })()}
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       <div className="flex gap-2 mt-2">
         {allDone && bjState.status === 'playing' && (
-          <button
-            onClick={handleDealer}
-            className="bg-yellow-700 hover:bg-yellow-600 text-white text-sm px-4 py-2 rounded"
-          >
+          <button onClick={handleDealer} className="bg-yellow-700 hover:bg-yellow-600 text-white text-sm px-4 py-2 rounded">
             Dealer plays
           </button>
         )}
         {bjState.status === 'finished' && (
-          <button
-            onClick={handleReset}
-            className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded"
-          >
+          <button onClick={handleReset} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded">
             New round
           </button>
         )}

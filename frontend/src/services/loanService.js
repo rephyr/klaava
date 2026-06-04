@@ -16,6 +16,10 @@ export function defaultLoan(loanId) {
   return apiFetch(`/loans/${loanId}/default`, { method: 'POST' })
 }
 
+export function partialRepayLoan(loanId, amount) {
+  return apiFetch(`/loans/${loanId}/partial`, { method: 'POST', body: JSON.stringify({ amount }) })
+}
+
 export function applyInterest() {
   return apiFetch('/loans/interest/apply', { method: 'POST' })
 }

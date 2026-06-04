@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from database.connection import getDb
-from database.crud import getPlayer
+from database.crud import getPlayer, getActiveSession, checkBankruptcy
 from pydantic import BaseModel
 import random
 import math
@@ -50,13 +50,19 @@ class BjStartRequest(BaseModel):
 
 class BjActionRequest(BaseModel):
     playerId: int
+    hand: str = "main"  # "main" | "split"
 
 @router.get("/state")
 def getBjState():
     return _bj
 
 @router.post("/start")
-def startBlackjack(data: BjStartRequest):
+def startBlackjack(data: BjStartRequest, db: Session = Depends(getDb)):
+    session = getActiveSession(db)
+    if session:
+        for bet in data.bets:
+            if bet.amount < session.currentMinBet:
+                raise HTTPException(status_code=400, detail=f"Bet for player {bet.playerName} is below minimum {session.currentMinBet}")
     _bj["deck"] = makeDeck()
     _bj["players"] = []
     for bet in data.bets:
@@ -72,6 +78,11 @@ def startBlackjack(data: BjStartRequest):
             "status": status,
             "result": None,
             "powerupTriggered": None,
+            "splitHand": None,
+            "splitTotal": None,
+            "splitStatus": None,
+            "splitResult": None,
+            "splitAmount": 0,
         })
     dealerHand = [_bj["deck"].pop(), _bj["deck"].pop()]
     _bj["dealer"] = {
@@ -85,23 +96,132 @@ def startBlackjack(data: BjStartRequest):
 @router.post("/hit")
 def hit(data: BjActionRequest):
     player = next((p for p in _bj["players"] if p["playerId"] == data.playerId), None)
-    if not player or player["status"] != "active":
-        raise HTTPException(status_code=400, detail="Player cannot hit")
-    player["hand"].append(_bj["deck"].pop())
-    player["total"] = handTotal(player["hand"])
-    if player["total"] > 21:
-        player["status"] = "bust"
-    elif player["total"] == 21:
-        player["status"] = "stood"
+    if not player:
+        raise HTTPException(status_code=400, detail="Player not found")
+    if data.hand == "split":
+        if player.get("splitHand") is None or player["splitStatus"] != "active":
+            raise HTTPException(status_code=400, detail="Cannot hit split hand")
+        player["splitHand"].append(_bj["deck"].pop())
+        player["splitTotal"] = handTotal(player["splitHand"])
+        if player["splitTotal"] > 21:
+            player["splitStatus"] = "bust"
+        elif player["splitTotal"] == 21:
+            player["splitStatus"] = "stood"
+    else:
+        if player["status"] != "active":
+            raise HTTPException(status_code=400, detail="Player cannot hit")
+        player["hand"].append(_bj["deck"].pop())
+        player["total"] = handTotal(player["hand"])
+        if player["total"] > 21:
+            player["status"] = "bust"
+        elif player["total"] == 21:
+            player["status"] = "stood"
     return _bj
 
 @router.post("/stand")
 def stand(data: BjActionRequest):
     player = next((p for p in _bj["players"] if p["playerId"] == data.playerId), None)
-    if not player or player["status"] != "active":
-        raise HTTPException(status_code=400, detail="Player cannot stand")
-    player["status"] = "stood"
+    if not player:
+        raise HTTPException(status_code=400, detail="Player not found")
+    if data.hand == "split":
+        if player.get("splitHand") is None or player["splitStatus"] != "active":
+            raise HTTPException(status_code=400, detail="Cannot stand split hand")
+        player["splitStatus"] = "stood"
+    else:
+        if player["status"] != "active":
+            raise HTTPException(status_code=400, detail="Player cannot stand")
+        player["status"] = "stood"
     return _bj
+
+@router.post("/split")
+def splitHand(data: BjActionRequest):
+    player = next((p for p in _bj["players"] if p["playerId"] == data.playerId), None)
+    if not player:
+        raise HTTPException(status_code=400, detail="Player not found")
+    if player["status"] != "active":
+        raise HTTPException(status_code=400, detail="Player cannot split")
+    if len(player["hand"]) != 2:
+        raise HTTPException(status_code=400, detail="Can only split with exactly 2 cards")
+    if player["hand"][0]["value"] != player["hand"][1]["value"]:
+        raise HTTPException(status_code=400, detail="Cards must have the same value to split")
+    if player.get("splitHand") is not None:
+        raise HTTPException(status_code=400, detail="Already split")
+
+    splitCard = player["hand"].pop()
+    player["hand"].append(_bj["deck"].pop())
+    player["total"] = handTotal(player["hand"])
+    player["status"] = "blackjack" if player["total"] == 21 else "active"
+
+    player["splitHand"] = [splitCard, _bj["deck"].pop()]
+    player["splitTotal"] = handTotal(player["splitHand"])
+    player["splitStatus"] = "blackjack" if player["splitTotal"] == 21 else "active"
+    player["splitAmount"] = player["amount"]
+    return _bj
+
+@router.post("/double")
+def doubleDown(data: BjActionRequest):
+    player = next((p for p in _bj["players"] if p["playerId"] == data.playerId), None)
+    if not player:
+        raise HTTPException(status_code=400, detail="Player not found")
+    if data.hand == "split":
+        if player.get("splitHand") is None or player["splitStatus"] != "active":
+            raise HTTPException(status_code=400, detail="Cannot double down")
+        if len(player["splitHand"]) != 2:
+            raise HTTPException(status_code=400, detail="Can only double down on 2 cards")
+        player["splitAmount"] *= 2
+        player["splitHand"].append(_bj["deck"].pop())
+        player["splitTotal"] = handTotal(player["splitHand"])
+        player["splitStatus"] = "bust" if player["splitTotal"] > 21 else "stood"
+    else:
+        if player["status"] != "active":
+            raise HTTPException(status_code=400, detail="Cannot double down")
+        if len(player["hand"]) != 2:
+            raise HTTPException(status_code=400, detail="Can only double down on 2 cards")
+        player["amount"] *= 2
+        player["hand"].append(_bj["deck"].pop())
+        player["total"] = handTotal(player["hand"])
+        player["status"] = "bust" if player["total"] > 21 else "stood"
+    return _bj
+
+def resolveHand(pStatus, pTotal, pAmount, dealerBust, dealerTotal, db_player, applyPowerup):
+    result = None
+    powerupTriggered = None
+    amount = int(pAmount)
+    if pStatus == "bust":
+        result = "lose"
+        if applyPowerup and db_player.powerup in ("shield", "immunity"):
+            powerupTriggered = db_player.powerup
+            db_player.powerup = None
+        else:
+            db_player.klaava = max(0, db_player.klaava - amount)
+    elif pStatus == "blackjack":
+        result = "blackjack"
+        gain = math.ceil(amount * 1.5)
+        if applyPowerup and db_player.powerup in ("doubleDown", "jackpot"):
+            mult = 3 if db_player.powerup == "jackpot" else 2
+            gain *= mult
+            powerupTriggered = db_player.powerup
+            db_player.powerup = None
+        db_player.klaava += gain
+    elif dealerBust or pTotal > dealerTotal:
+        result = "win"
+        gain = amount
+        if applyPowerup and db_player.powerup in ("doubleDown", "jackpot"):
+            mult = 3 if db_player.powerup == "jackpot" else 2
+            gain *= mult
+            powerupTriggered = db_player.powerup
+            db_player.powerup = None
+        db_player.klaava += gain
+    elif pTotal == dealerTotal:
+        result = "push"
+    else:
+        result = "lose"
+        if applyPowerup and db_player.powerup in ("shield", "immunity"):
+            powerupTriggered = db_player.powerup
+            db_player.powerup = None
+        else:
+            db_player.klaava = max(0, db_player.klaava - amount)
+    return result, powerupTriggered
 
 @router.post("/dealer")
 def dealerPlay(db: Session = Depends(getDb)):
@@ -118,55 +238,32 @@ def dealerPlay(db: Session = Depends(getDb)):
     dealerTotal = dealer["total"]
     dealerBust = dealerTotal > 21
     for player in _bj["players"]:
-        playerId = int(player["playerId"])
-        db_player = getPlayer(db, playerId)
+        db_player = getPlayer(db, int(player["playerId"]))
         if not db_player:
             continue
-        pTotal = player["total"]
-        amount = int(player["amount"])
-        if player["status"] == "bust":
-            player["result"] = "lose"
-            if db_player.powerup in ("shield", "immunity"):
-                player["powerupTriggered"] = db_player.powerup
-                db_player.powerup = None
-            else:
-                db_player.klaava = max(0, db_player.klaava - amount)
-        elif player["status"] == "blackjack":
-            player["result"] = "blackjack"
-            gain = math.ceil(amount * 1.5)
-            if db_player.powerup in ("doubleDown", "jackpot"):
-                mult = 3 if db_player.powerup == "jackpot" else 2
-                gain *= mult
-                player["powerupTriggered"] = db_player.powerup
-                db_player.powerup = None
-            db_player.klaava += gain
-        elif dealerBust or pTotal > dealerTotal:
-            player["result"] = "win"
-            gain = amount
-            if db_player.powerup in ("doubleDown", "jackpot"):
-                mult = 3 if db_player.powerup == "jackpot" else 2
-                gain *= mult
-                player["powerupTriggered"] = db_player.powerup
-                db_player.powerup = None
-            db_player.klaava += gain
-        elif pTotal == dealerTotal:
-            player["result"] = "push"
-        else:
-            player["result"] = "lose"
-            if db_player.powerup in ("shield", "immunity"):
-                player["powerupTriggered"] = db_player.powerup
-                db_player.powerup = None
-            else:
-                db_player.klaava = max(0, db_player.klaava - amount)
-        if db_player.klaava == 0:
-            db_player.eliminated = True
+        result, powerupTriggered = resolveHand(
+            player["status"], player["total"], player["amount"],
+            dealerBust, dealerTotal, db_player, applyPowerup=True
+        )
+        player["result"] = result
+        player["powerupTriggered"] = powerupTriggered
+        if player.get("splitHand") is not None:
+            splitResult, _ = resolveHand(
+                player["splitStatus"], player["splitTotal"], player["splitAmount"],
+                dealerBust, dealerTotal, db_player, applyPowerup=False
+            )
+            player["splitResult"] = splitResult
+        checkBankruptcy(db, db_player)
     db.commit()
     return _bj
 
-@router.post("/reset")
-def resetBlackjack():
+def resetState():
     _bj["status"] = "idle"
     _bj["deck"] = []
     _bj["dealer"] = {"hand": [], "hiddenCard": None, "total": 0}
     _bj["players"] = []
+
+@router.post("/reset")
+def resetBlackjack():
+    resetState()
     return _bj

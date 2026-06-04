@@ -90,6 +90,36 @@ def repayLoan(db: Session, loanId: int):
         return loan
     return None
 
+def checkBankruptcy(db: Session, player):
+    """Eliminate a player immediately if they hit 0 klaava while carrying an active loan."""
+    if player.klaava <= 0:
+        hasLoan = db.query(Loan).filter(
+            Loan.playerId == player.id,
+            Loan.status == "active"
+        ).count() > 0
+        if hasLoan:
+            player.klaava = 0
+            player.eliminated = True
+
+def partialRepayLoan(db: Session, loanId: int, amount: int):
+    loan = db.query(Loan).filter(Loan.id == loanId).first()
+    if not loan or loan.status != "active":
+        return None
+    player = getPlayer(db, loan.playerId)
+    if not player:
+        return None
+    pay = min(amount, player.klaava, loan.amountOwed)
+    if pay <= 0:
+        return None
+    player.klaava -= pay
+    loan.amountOwed -= pay
+    if loan.amountOwed <= 0:
+        loan.amountOwed = 0
+        loan.status = "paid"
+    db.commit()
+    db.refresh(loan)
+    return loan
+
 def defaultLoan(db: Session, loanId: int):
     loan = db.query(Loan).filter(Loan.id == loanId).first()
     if not loan:
@@ -165,9 +195,10 @@ def transferKlaava(db: Session, data: TransferRequest):
     if not loserImmune:
         db.add(Transaction(playerId=loser.id, roundId=roundId, amount=-effectiveAmount, type="bet"))
     db.add(Transaction(playerId=winner.id, roundId=roundId, amount=effectiveAmount, type="bet"))
-    if not loserImmune and loser.klaava <= 0:
+    if not loserImmune and loser.klaava < 0:
         loser.klaava = 0
-        loser.eliminated = True
+    if not loserImmune:
+        checkBankruptcy(db, loser)
     db.commit()
     db.refresh(loser)
     db.refresh(winner)
@@ -188,8 +219,50 @@ def advanceGame(db: Session, data: GameAdvanceRequest):
         return None
     if data.phase:
         session.currentPhase = data.phase
+        if data.phase == "endRound":
+            sessionPlayerIds = [
+                tp.playerId
+                for tp in db.query(TournamentPlayer).filter(
+                    TournamentPlayer.tournamentId == session.id
+                ).all()
+            ]
+            broke = db.query(Player).filter(
+                Player.id.in_(sessionPlayerIds),
+                Player.eliminated.is_(False),
+                Player.klaava < session.currentMinBet,
+            ).all()
+            for player in broke:
+                hasLoan = db.query(Loan).filter(
+                    Loan.playerId == player.id,
+                    Loan.status == "active"
+                ).count() > 0
+                if hasLoan:
+                    player.eliminated = True
+                    player.klaava = 0
     if data.nextRound:
         session.currentRound += 1
+        sessionPlayerIds = [
+            tp.playerId
+            for tp in db.query(TournamentPlayer).filter(
+                TournamentPlayer.tournamentId == session.id
+            ).all()
+        ]
+        activeLoans = db.query(Loan).filter(
+            Loan.playerId.in_(sessionPlayerIds),
+            Loan.status == "active"
+        ).all()
+        for loan in activeLoans:
+            loan.turnsActive += 1
+            if loan.turnsActive >= 3:
+                loan.status = "defaulted"
+                player = db.query(Player).filter(Player.id == loan.playerId).first()
+                if player:
+                    player.eliminated = True
+            else:
+                loan.amountOwed = round(loan.amountOwed * (1 + loan.interestRate))
+        settings = getSettings(db)
+        session.currentMinBet = round(session.currentMinBet * settings.betMultiplier)
+        session.currentMaxBet = round(session.currentMaxBet * settings.betMultiplier)
     if data.nextLevel:
         settings = getSettings(db)
         session.currentLevel += 1
@@ -286,6 +359,10 @@ def deleteGame(db: Session, gameId: int):
     db.delete(game)
     db.commit()
     return game
+
+def resetAllGames(db: Session):
+    db.query(Game).update({"isActive": True})
+    db.commit()
 
 def toggleGame(db: Session, gameId: int):
     game = db.query(Game).filter(Game.id == gameId).first()
