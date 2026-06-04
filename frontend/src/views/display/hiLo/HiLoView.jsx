@@ -8,10 +8,15 @@ function Card({ card, large = false }) {
   const labelSize = 'text-2xl'
   const color = card.red ? 'text-red-500' : 'text-gray-900'
   return (
-    <div className={`${size} bg-white rounded-2xl shadow-2xl flex flex-col justify-between p-3 select-none`}>
-      <span className={`font-bold leading-none ${color} ${labelSize}`}>{card.label}{card.suit}</span>
-      <span className={`font-bold text-center ${color} ${textSize}`}>{card.suit}</span>
-      <span className={`font-bold leading-none self-end rotate-180 ${color} ${labelSize}`}>{card.label}{card.suit}</span>
+    <div style={{ perspective: '600px' }}>
+      <div
+        style={{ animation: 'dealCard 0.5s ease-out' }}
+        className={`${size} bg-white rounded-2xl shadow-2xl flex flex-col justify-between p-3 select-none`}
+      >
+        <span className={`font-bold leading-none ${color} ${labelSize}`}>{card.label}{card.suit}</span>
+        <span className={`font-bold text-center ${color} ${textSize}`}>{card.suit}</span>
+        <span className={`font-bold leading-none self-end rotate-180 ${color} ${labelSize}`}>{card.label}{card.suit}</span>
+      </div>
     </div>
   )
 }
@@ -43,19 +48,35 @@ function HiLoView() {
 
       <div className="flex items-center gap-12">
         {state.status === 'revealed' && state.previousCard && (
-          <>
-            <div className="flex flex-col items-center gap-3">
-              <p className="text-xs text-gray-500 uppercase tracking-widest">Previous</p>
-              <Card card={state.previousCard} />
-            </div>
-            <p className={`text-5xl font-bold ${resultColor}`}>{resultLabel}</p>
-          </>
+          <div
+            key={`prev-${state.previousCard.label}${state.previousCard.suit}`}
+            style={{ animation: 'slideInLeft 0.4s ease-out' }}
+            className="flex flex-col items-center gap-3"
+          >
+            <p className="text-xs text-gray-500 uppercase tracking-widest">Previous</p>
+            <Card card={state.previousCard} />
+          </div>
         )}
+
+        {state.status === 'revealed' && state.result && (
+          <p
+            key={state.result}
+            style={{ animation: 'popIn 0.4s ease-out' }}
+            className={`text-5xl font-bold ${resultColor}`}
+          >
+            {resultLabel}
+          </p>
+        )}
+
         <div className="flex flex-col items-center gap-3">
           <p className="text-xs text-gray-500 uppercase tracking-widest">
             {state.status === 'revealed' ? 'New card' : 'Current card'}
           </p>
-          <Card card={state.currentCard} large />
+          <Card
+            key={`${state.currentCard?.label}${state.currentCard?.suit}`}
+            card={state.currentCard}
+            large
+          />
         </div>
       </div>
 
@@ -74,9 +95,10 @@ function HiLoView() {
 
       {state.status === 'revealed' && state.bets.length > 0 && (
         <div className="grid grid-cols-2 gap-3 w-full max-w-2xl mt-2">
-          {state.bets.map((bet) => (
+          {state.bets.map((bet, i) => (
             <div
               key={bet.playerId}
+              style={{ animation: `fadeUp 0.35s ease-out ${i * 0.07}s both` }}
               className={`rounded-2xl p-4 flex flex-col gap-1 ${
                 bet.result === 'correct' ? 'bg-green-900' : bet.result === 'wrong' ? 'bg-red-900' : 'bg-gray-800'
               }`}

@@ -8,12 +8,20 @@ export function startBlackjack(bets) {
   return apiFetch('/blackjack/start', { method: 'POST', body: JSON.stringify({ bets }) })
 }
 
-export function hit(playerId) {
-  return apiFetch('/blackjack/hit', { method: 'POST', body: JSON.stringify({ playerId }) })
+export function hit(playerId, hand = 'main') {
+  return apiFetch('/blackjack/hit', { method: 'POST', body: JSON.stringify({ playerId, hand }) })
 }
 
-export function stand(playerId) {
-  return apiFetch('/blackjack/stand', { method: 'POST', body: JSON.stringify({ playerId }) })
+export function stand(playerId, hand = 'main') {
+  return apiFetch('/blackjack/stand', { method: 'POST', body: JSON.stringify({ playerId, hand }) })
+}
+
+export function split(playerId) {
+  return apiFetch('/blackjack/split', { method: 'POST', body: JSON.stringify({ playerId }) })
+}
+
+export function doubleDown(playerId, hand = 'main') {
+  return apiFetch('/blackjack/double', { method: 'POST', body: JSON.stringify({ playerId, hand }) })
 }
 
 export function dealerPlay() {
