@@ -209,6 +209,41 @@ def stopGame(db: Session):
     db.refresh(session)
     return session
 
+def endGame(db: Session):
+    session = getActiveSession(db)
+    if not session:
+        return None
+    sessionPlayers = db.query(TournamentPlayer).filter(
+        TournamentPlayer.tournamentId == session.id
+    ).all()
+    players = [sp.player for sp in sessionPlayers if sp.player is not None]
+    active = sorted([p for p in players if not p.eliminated], key=lambda p: p.klaava, reverse=True)
+    eliminated = sorted([p for p in players if p.eliminated], key=lambda p: p.klaava, reverse=True)
+    for i, player in enumerate(active + eliminated):
+        db.add(Leaderboard(
+            tournamentId=session.id,
+            playerId=player.id,
+            finalPosition=i + 1,
+            finalKlaava=player.klaava,
+        ))
+    session.status = "finished"
+    session.currentPhase = "finished"
+    db.commit()
+    entries = db.query(Leaderboard).filter(
+        Leaderboard.tournamentId == session.id
+    ).order_by(Leaderboard.finalPosition).all()
+    return {"session": session, "leaderboard": entries}
+
+def getLeaderboard(db: Session, sessionId: int):
+    return db.query(Leaderboard).filter(
+        Leaderboard.tournamentId == sessionId
+    ).order_by(Leaderboard.finalPosition).all()
+
+def getLastFinishedSession(db: Session):
+    return db.query(Tournament).filter(
+        Tournament.status == "finished"
+    ).order_by(Tournament.id.desc()).first()
+
 def getSettings(db: Session):
     settings = db.query(Settings).filter(Settings.id == 1).first()
     if not settings:
@@ -226,8 +261,16 @@ def updateSettings(db: Session, data: SettingsUpdate):
     db.refresh(settings)
     return settings
 
+DEFAULT_GAMES = ["Hi-Lo", "Blackjack", "Roulette", "Auction"]
+
 def getGames(db: Session):
-    return db.query(Game).all()
+    games = db.query(Game).all()
+    if not games:
+        for name in DEFAULT_GAMES:
+            db.add(Game(name=name, isActive=True))
+        db.commit()
+        games = db.query(Game).all()
+    return games
 
 def createGame(db: Session, data: GameCreate):
     game = Game(**data.model_dump())

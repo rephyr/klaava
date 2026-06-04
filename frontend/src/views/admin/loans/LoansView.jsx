@@ -70,6 +70,20 @@ function LoansView() {
     showFeedback('Player defaulted and eliminated')
   }
 
+  async function handleBankrupt(player) {
+    const playerLoans = loans[player.id] ?? []
+    for (const loan of playerLoans) {
+      await defaultLoan(loan.id)
+    }
+    setPlayers((prev) => prev.filter((p) => p.id !== player.id))
+    setLoans((prev) => {
+      const next = { ...prev }
+      delete next[player.id]
+      return next
+    })
+    showFeedback(`${player.name} bankrupt — eliminated`)
+  }
+
   async function handleApplyInterest() {
     const updated = await applyInterest()
     setLoans((prev) => {
@@ -115,8 +129,11 @@ function LoansView() {
           const playerLoans = loans[player.id] ?? []
           const amount = loanAmounts[player.id] ?? ''
 
+          const totalOwed = playerLoans.reduce((sum, l) => sum + l.amountOwed, 0)
+          const isBankrupt = playerLoans.length > 0 && player.klaava < totalOwed
+
           return (
-            <div key={player.id} className="bg-gray-800 rounded-xl p-4">
+            <div key={player.id} className={`rounded-xl p-4 ${isBankrupt ? 'bg-red-950 border border-red-800' : 'bg-gray-800'}`}>
               <div className="flex items-center gap-3 mb-3">
                 <p className="font-semibold text-base w-28">{player.name}</p>
                 <p className="text-green-400 text-sm">{formatKlaava(player.klaava)}</p>
@@ -124,6 +141,14 @@ function LoansView() {
                   <span className="text-xs text-yellow-400 bg-yellow-900/40 px-2 py-0.5 rounded-full">
                     {playerLoans.length} active loan{playerLoans.length !== 1 ? 's' : ''}
                   </span>
+                )}
+                {isBankrupt && (
+                  <button
+                    onClick={() => handleBankrupt(player)}
+                    className="ml-auto bg-red-700 hover:bg-red-600 text-white text-xs px-3 py-1 rounded font-semibold"
+                  >
+                    Bankrupt
+                  </button>
                 )}
               </div>
 

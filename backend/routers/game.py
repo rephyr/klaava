@@ -116,8 +116,9 @@ def spinWheel(db: Session = Depends(getDb)):
     winnerIndex = random.randint(0, len(segments) - 1)
     segmentAngle = 360 / len(segments)
     # Arrow sits at top of wheel = 270° in canvas coords (canvas 0° = right).
-    # Center of winner segment in canvas degrees:
-    centerOfWinner = (winnerIndex + 0.5) * segmentAngle
+    # Random offset within the segment (0.1–0.9 avoids landing right on a border).
+    offsetWithinSegment = random.random()
+    centerOfWinner = (winnerIndex + offsetWithinSegment) * segmentAngle
     # Additional degrees needed from current wheel position to land winner under arrow.
     prevAngle = _liveState["wheelAngle"]
     additionalDeg = (270 - centerOfWinner - prevAngle) % 360
@@ -138,6 +139,42 @@ def stopGame(db: Session = Depends(getDb)):
     _liveState["lastResult"] = None
     _liveState["minigame"] = None
     return {"message": "Game stopped"}
+
+@router.post("/game/end")
+def endGame(db: Session = Depends(getDb)):
+    result = crud.endGame(db)
+    if not result:
+        raise HTTPException(status_code=404, detail="No active session")
+    _liveState["lastResult"] = None
+    _liveState["minigame"] = None
+    return {
+        "phase": "finished",
+        "leaderboard": [
+            {
+                "position": e.finalPosition,
+                "playerId": e.playerId,
+                "playerName": e.player.name,
+                "finalKlaava": e.finalKlaava,
+            }
+            for e in result["leaderboard"]
+        ],
+    }
+
+@router.get("/game/leaderboard")
+def getLeaderboard(db: Session = Depends(getDb)):
+    session = crud.getLastFinishedSession(db)
+    if not session:
+        raise HTTPException(status_code=404, detail="No finished session found")
+    entries = crud.getLeaderboard(db, session.id)
+    return [
+        {
+            "position": e.finalPosition,
+            "playerId": e.playerId,
+            "playerName": e.player.name,
+            "finalKlaava": e.finalKlaava,
+        }
+        for e in entries
+    ]
 
 
 class DoubleOrNothingRequest(BaseModel):
