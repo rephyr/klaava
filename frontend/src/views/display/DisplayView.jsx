@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getGameState, getSession } from '../../services/gameService'
+import { getLoansByPlayer } from '../../services/loanService'
 import { formatKlaava } from '../../utils/formatters'
 import GamblingView from './gambling/GamblingView'
 import MinigameView from './minigame/MinigameView'
@@ -14,13 +15,19 @@ import RouletteView from './roulette/RouletteView'
 import AuctionView from './auction/AuctionView'
 import EndRoundView from './endRound/EndRoundView'
 import FinishedView from './finished/FinishedView'
+import LoansharkOverlay from './loanshark/LoansharkOverlay'
+import BankruptcyOverlay from './bankruptcy/BankruptcyOverlay'
 
 const POLL_INTERVAL = 3000
 
 function DisplayView() {
   const [gameState, setGameState] = useState(null)
   const [session, setSession] = useState(null)
+  const [bankruptPlayers, setBankruptPlayers] = useState([])
+  const [endRoundDebtors, setEndRoundDebtors] = useState([])
   const navigate = useNavigate()
+  const prevActiveIdsRef = useRef(new Set())
+  const bankruptTimeoutRef = useRef(null)
 
   useEffect(() => {
     async function poll() {
@@ -37,6 +44,35 @@ function DisplayView() {
     const interval = setInterval(poll, POLL_INTERVAL)
     return () => clearInterval(interval)
   }, [])
+
+  // Detect newly eliminated players and show bankruptcy screen
+  useEffect(() => {
+    if (!session) {
+      prevActiveIdsRef.current = new Set()
+      return
+    }
+    const prevIds = prevActiveIdsRef.current
+    const justEliminated = session.players.filter((p) => p.eliminated && prevIds.has(p.id))
+    prevActiveIdsRef.current = new Set(session.players.filter((p) => !p.eliminated).map((p) => p.id))
+
+    if (justEliminated.length > 0) {
+      if (bankruptTimeoutRef.current) clearTimeout(bankruptTimeoutRef.current)
+      setBankruptPlayers(justEliminated)
+      bankruptTimeoutRef.current = setTimeout(() => setBankruptPlayers([]), 5000)
+    }
+  }, [session])
+
+  // Fetch loans for all players when endRound starts
+  useEffect(() => {
+    if (gameState?.phase !== 'endRound' || !session) {
+      setEndRoundDebtors([])
+      return
+    }
+    const active = session.players.filter((p) => !p.eliminated)
+    Promise.all(
+      active.map((p) => getLoansByPlayer(p.id).then((loans) => ({ player: p, loans })).catch(() => ({ player: p, loans: [] })))
+    ).then((results) => setEndRoundDebtors(results.filter((r) => r.loans.length > 0)))
+  }, [gameState?.phase, session?.id])
 
   const phase = gameState?.phase ?? 'lobby'
 
@@ -55,7 +91,7 @@ function DisplayView() {
     if (phase === 'result')   return <ResultView gameState={gameState} />
     if (phase === 'wheel')    return <WheelView gameState={gameState} />
     if (phase === 'hiLo')      return <HiLoView />
-    if (phase === 'blackjack') return <BlackjackView />
+    if (phase === 'blackjack') return <BlackjackView session={session} />
     if (phase === 'loans')     return <LoanView />
     if (phase === 'roulette')  return <RouletteView />
     if (phase === 'auction')   return <AuctionView />
@@ -87,6 +123,20 @@ function DisplayView() {
       <div className="flex-1 flex flex-col p-8">
         {renderPhase()}
       </div>
+
+      {(() => {
+        if (phase === 'endRound' && endRoundDebtors.length > 0)
+          return <LoansharkOverlay debtors={endRoundDebtors} />
+        const minBet = gameState?.minBet ?? 0
+        const broke = minBet > 0
+          ? (session?.players ?? []).filter((p) => !p.eliminated && p.klaava < minBet)
+          : []
+        return broke.length > 0 && phase !== 'finished' && phase !== 'endRound'
+          ? <LoansharkOverlay players={broke} />
+          : null
+      })()}
+
+      {bankruptPlayers.length > 0 && <BankruptcyOverlay players={bankruptPlayers} />}
 
     </div>
   )

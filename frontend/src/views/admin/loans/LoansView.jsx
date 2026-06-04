@@ -192,7 +192,6 @@ function LoansView() {
                   onKeyDown={(e) => e.key === 'Enter' && handleIssue(player)}
                   placeholder="Amount"
                   min={1}
-                  max={settings?.maxLoanAmount}
                   className="bg-gray-700 rounded px-2 py-1 text-sm text-white w-28"
                 />
                 <button

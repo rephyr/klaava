@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from database.connection import getDb
-from database.crud import getPlayer
+from database.crud import getPlayer, getActiveSession, checkBankruptcy
 from pydantic import BaseModel
 import random
 
@@ -50,7 +50,10 @@ def startHiLo():
     return _state
 
 @router.post("/bet")
-def placeBet(data: BetRequest):
+def placeBet(data: BetRequest, db: Session = Depends(getDb)):
+    session = getActiveSession(db)
+    if session and data.amount < session.currentMinBet:
+        raise HTTPException(status_code=400, detail=f"Bet {data.amount} is below minimum {session.currentMinBet}")
     existing = next((b for b in _state["bets"] if b["playerId"] == data.playerId), None)
     if existing:
         existing["guess"] = data.guess
@@ -102,8 +105,7 @@ def revealCard(db: Session = Depends(getDb)):
                 player.powerup = None
             else:
                 player.klaava = max(0, player.klaava - bet["amount"])
-                if player.klaava == 0:
-                    player.eliminated = True
+                checkBankruptcy(db, player)
     db.commit()
     return _state
 
@@ -116,6 +118,14 @@ def nextRound():
     _state["result"] = None
     _state["bets"] = []
     return _state
+
+def resetState():
+    _state["deck"] = []
+    _state["currentCard"] = None
+    _state["previousCard"] = None
+    _state["status"] = "idle"
+    _state["result"] = None
+    _state["bets"] = []
 
 @router.get("/state")
 def getHiLoState():

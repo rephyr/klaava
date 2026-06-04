@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from database.connection import getDb
-from database.crud import getPlayer
+from database.crud import getPlayer, getActiveSession, checkBankruptcy
 from pydantic import BaseModel
 import random
 
@@ -41,7 +41,10 @@ def startRoulette():
     return _state
 
 @router.post("/bet")
-def placeBet(data: RouletteBet):
+def placeBet(data: RouletteBet, db: Session = Depends(getDb)):
+    session = getActiveSession(db)
+    if session and data.amount < session.currentMinBet:
+        raise HTTPException(status_code=400, detail=f"Bet {data.amount} is below minimum {session.currentMinBet}")
     existing = next((b for b in _state["bets"] if b["playerId"] == data.playerId), None)
     if existing:
         existing["betType"] = data.betType
@@ -107,15 +110,17 @@ def spin(db: Session = Depends(getDb)):
                 player.powerup = None
             else:
                 player.klaava = max(0, player.klaava - bet["amount"])
-                if player.klaava == 0:
-                    player.eliminated = True
+                checkBankruptcy(db, player)
     db.commit()
     return _state
 
-@router.post("/reset")
-def resetRoulette():
+def resetState():
     _state["status"] = "idle"
     _state["bets"] = []
     _state["result"] = None
     _state["resultColor"] = None
+
+@router.post("/reset")
+def resetRoulette():
+    resetState()
     return _state

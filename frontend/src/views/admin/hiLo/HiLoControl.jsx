@@ -97,6 +97,8 @@ function HiLoControl({ players, gameState, onPhaseChange, refreshPlayers }) {
               <input
                 type="number"
                 value={bet.amount}
+                min={gameState.minBet}
+                max={gameState.maxBet}
                 onChange={(e) => {
                   const updated = { ...bet, amount: Number(e.target.value) }
                   setBets((prev) => ({ ...prev, [player.id]: updated }))

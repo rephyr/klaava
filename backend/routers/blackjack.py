@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from database.connection import getDb
-from database.crud import getPlayer
+from database.crud import getPlayer, getActiveSession, checkBankruptcy
 from pydantic import BaseModel
 import random
 import math
@@ -57,7 +57,12 @@ def getBjState():
     return _bj
 
 @router.post("/start")
-def startBlackjack(data: BjStartRequest):
+def startBlackjack(data: BjStartRequest, db: Session = Depends(getDb)):
+    session = getActiveSession(db)
+    if session:
+        for bet in data.bets:
+            if bet.amount < session.currentMinBet:
+                raise HTTPException(status_code=400, detail=f"Bet for player {bet.playerName} is below minimum {session.currentMinBet}")
     _bj["deck"] = makeDeck()
     _bj["players"] = []
     for bet in data.bets:
@@ -248,15 +253,17 @@ def dealerPlay(db: Session = Depends(getDb)):
                 dealerBust, dealerTotal, db_player, applyPowerup=False
             )
             player["splitResult"] = splitResult
-        if db_player.klaava == 0:
-            db_player.eliminated = True
+        checkBankruptcy(db, db_player)
     db.commit()
     return _bj
 
-@router.post("/reset")
-def resetBlackjack():
+def resetState():
     _bj["status"] = "idle"
     _bj["deck"] = []
     _bj["dealer"] = {"hand": [], "hiddenCard": None, "total": 0}
     _bj["players"] = []
+
+@router.post("/reset")
+def resetBlackjack():
+    resetState()
     return _bj

@@ -99,6 +99,7 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
                 <input
                   type="number"
                   value={bets[p.id] ?? defaultBet}
+                  min={defaultBet}
                   onChange={(e) => setBets((prev) => ({ ...prev, [p.id]: e.target.value }))}
                   className="bg-gray-700 rounded px-2 py-1 text-sm text-white w-20"
                 />

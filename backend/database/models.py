@@ -83,6 +83,7 @@ class Loan(Base):
     interestRate = Column(Float, nullable=False, default=0.10)
     amountOwed = Column(Integer, nullable=False)
     status = Column(String, default="active")  # active | paid | defaulted
+    turnsActive = Column(Integer, default=0)
     createdAt = Column(DateTime, server_default=func.now())
 
     player = relationship("Player", back_populates="loans")

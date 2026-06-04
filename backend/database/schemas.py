@@ -83,6 +83,7 @@ class LoanRead(BaseModel):
     interestRate: float
     amountOwed: int
     status: str
+    turnsActive: int = 0
     createdAt: datetime
 
     model_config = {"from_attributes": True}
