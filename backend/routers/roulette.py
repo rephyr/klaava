@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from database.connection import getDb
 from database.crud import getPlayer, getActiveSession, checkBankruptcy
+from services.powerup import applyWinMultiplier, applyLossShield
 from pydantic import BaseModel
 import random
 
@@ -93,22 +94,17 @@ def spin(db: Session = Depends(getDb)):
         elif bet["betType"] == "number":
             won = int(bet["betValue"]) == result
             payout = bet["amount"] * 35
-        bet["powerupTriggered"] = None
         bet["result"] = "win" if won else "lose"
         if won:
-            if player.powerup in ("doubleDown", "jackpot"):
-                mult = 3 if player.powerup == "jackpot" else 2
-                payout *= mult
-                bet["powerupTriggered"] = player.powerup
-                player.powerup = None
+            payout, pt = applyWinMultiplier(player, payout)
+            bet["powerupTriggered"] = pt
             bet["payout"] = payout
             player.klaava += payout
         else:
+            pt = applyLossShield(player)
+            bet["powerupTriggered"] = pt
             bet["payout"] = payout
-            if player.powerup in ("shield", "immunity"):
-                bet["powerupTriggered"] = player.powerup
-                player.powerup = None
-            else:
+            if pt is None:
                 player.klaava = max(0, player.klaava - bet["amount"])
                 checkBankruptcy(db, player)
     db.commit()

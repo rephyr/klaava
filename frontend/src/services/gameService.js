@@ -41,3 +41,10 @@ export function endGame() {
 export function getLeaderboard() {
   return apiFetch('/game/leaderboard')
 }
+
+export function addPlayerToSession(playerId) {
+  return apiFetch('/game/addPlayer', {
+    method: 'POST',
+    body: JSON.stringify({ playerId }),
+  })
+}

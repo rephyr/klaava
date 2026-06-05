@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from database.connection import getDb
 from database.crud import getPlayer, getActiveSession, checkBankruptcy
+from services.powerup import applyWinMultiplier, applyLossShield
 from pydantic import BaseModel
 import random
 import math
@@ -189,37 +190,29 @@ def resolveHand(pStatus, pTotal, pAmount, dealerBust, dealerTotal, db_player, ap
     amount = int(pAmount)
     if pStatus == "bust":
         result = "lose"
-        if applyPowerup and db_player.powerup in ("shield", "immunity"):
-            powerupTriggered = db_player.powerup
-            db_player.powerup = None
-        else:
+        if applyPowerup:
+            powerupTriggered = applyLossShield(db_player)
+        if powerupTriggered is None:
             db_player.klaava = max(0, db_player.klaava - amount)
     elif pStatus == "blackjack":
         result = "blackjack"
         gain = math.ceil(amount * 1.5)
-        if applyPowerup and db_player.powerup in ("doubleDown", "jackpot"):
-            mult = 3 if db_player.powerup == "jackpot" else 2
-            gain *= mult
-            powerupTriggered = db_player.powerup
-            db_player.powerup = None
+        if applyPowerup:
+            gain, powerupTriggered = applyWinMultiplier(db_player, gain)
         db_player.klaava += gain
     elif dealerBust or pTotal > dealerTotal:
         result = "win"
         gain = amount
-        if applyPowerup and db_player.powerup in ("doubleDown", "jackpot"):
-            mult = 3 if db_player.powerup == "jackpot" else 2
-            gain *= mult
-            powerupTriggered = db_player.powerup
-            db_player.powerup = None
+        if applyPowerup:
+            gain, powerupTriggered = applyWinMultiplier(db_player, gain)
         db_player.klaava += gain
     elif pTotal == dealerTotal:
         result = "push"
     else:
         result = "lose"
-        if applyPowerup and db_player.powerup in ("shield", "immunity"):
-            powerupTriggered = db_player.powerup
-            db_player.powerup = None
-        else:
+        if applyPowerup:
+            powerupTriggered = applyLossShield(db_player)
+        if powerupTriggered is None:
             db_player.klaava = max(0, db_player.klaava - amount)
     return result, powerupTriggered
 

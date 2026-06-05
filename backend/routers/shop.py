@@ -68,89 +68,81 @@ def buyPowerup(data: BuyRequest, db: Session = Depends(getDb)):
     db.refresh(player)
     return {"player": player}
 
+def _requireTarget(data, label):
+    if not data.targetId:
+        raise HTTPException(status_code=400, detail=f"{label} requires a target")
+    return data.targetId
+
+def _getTarget(db, targetId):
+    target = getPlayer(db, targetId)
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+    return target
+
+def _handleSteal(player, data, db):
+    target = _getTarget(db, _requireTarget(data, "Steal"))
+    session = getActiveSession(db)
+    amount = min(session.currentMinBet if session else 50, target.klaava)
+    target.klaava -= amount
+    player.klaava += amount
+    return {"effect": "steal", "amount": amount, "target": target}
+
+def _handleSabotage(player, data, db):
+    target = _getTarget(db, _requireTarget(data, "Sabotage"))
+    removedItem = target.powerup
+    target.powerup = None
+    return {"effect": "sabotage", "removedItem": removedItem, "target": target}
+
+def _handleHeist(player, data, db):
+    target = _getTarget(db, _requireTarget(data, "Heist"))
+    amount = target.klaava // 2
+    target.klaava -= amount
+    player.klaava += amount
+    return {"effect": "heist", "amount": amount, "target": target}
+
+def _handleTax(player, data, db):
+    session = getActiveSession(db)
+    if not session:
+        raise HTTPException(status_code=400, detail="No active session")
+    activePlayers = [sp.player for sp in session.sessionPlayers if sp.player and not sp.player.eliminated and sp.player.id != player.id]
+    totalCollected = 0
+    for p in activePlayers:
+        collected = min(session.currentMinBet, p.klaava)
+        p.klaava -= collected
+        totalCollected += collected
+    player.klaava += totalCollected
+    return {"effect": "tax", "amount": totalCollected, "affected": activePlayers}
+
+def _handleSwap(player, data, db):
+    target = _getTarget(db, _requireTarget(data, "Swap"))
+    player.klaava, target.klaava = target.klaava, player.klaava
+    return {"effect": "swap", "target": target}
+
+_POWERUP_HANDLERS = {
+    "steal": _handleSteal,
+    "sabotage": _handleSabotage,
+    "heist": _handleHeist,
+    "tax": _handleTax,
+    "swap": _handleSwap,
+}
+
 @router.post("/use")
 def useItem(data: UseRequest, db: Session = Depends(getDb)):
     player = getPlayer(db, data.playerId)
     if not player or not player.powerup:
         raise HTTPException(status_code=400, detail="Player has no powerup")
 
-    powerupId = player.powerup
+    handler = _POWERUP_HANDLERS.get(player.powerup)
+    if not handler:
+        raise HTTPException(status_code=400, detail=f"{player.powerup} triggers automatically — no manual use needed")
 
-    if powerupId == "steal":
-        if not data.targetId:
-            raise HTTPException(status_code=400, detail="Steal requires a target")
-        target = getPlayer(db, data.targetId)
-        if not target:
-            raise HTTPException(status_code=404, detail="Target not found")
-        session = getActiveSession(db)
-        amount = min(session.currentMinBet if session else 50, target.klaava)
-        target.klaava -= amount
-        player.klaava += amount
-        player.powerup = None
-        db.commit()
-        db.refresh(player)
-        db.refresh(target)
-        return {"effect": "steal", "amount": amount, "player": player, "target": target}
-
-    if powerupId == "sabotage":
-        if not data.targetId:
-            raise HTTPException(status_code=400, detail="Sabotage requires a target")
-        target = getPlayer(db, data.targetId)
-        if not target:
-            raise HTTPException(status_code=404, detail="Target not found")
-        removedItem = target.powerup
-        target.powerup = None
-        player.powerup = None
-        db.commit()
-        db.refresh(player)
-        db.refresh(target)
-        return {"effect": "sabotage", "removedItem": removedItem, "player": player, "target": target}
-
-    if powerupId == "heist":
-        if not data.targetId:
-            raise HTTPException(status_code=400, detail="Heist requires a target")
-        target = getPlayer(db, data.targetId)
-        if not target:
-            raise HTTPException(status_code=404, detail="Target not found")
-        amount = target.klaava // 2
-        target.klaava -= amount
-        player.klaava += amount
-        player.powerup = None
-        db.commit()
-        db.refresh(player)
-        db.refresh(target)
-        return {"effect": "heist", "amount": amount, "player": player, "target": target}
-
-    if powerupId == "tax":
-        session = getActiveSession(db)
-        if not session:
-            raise HTTPException(status_code=400, detail="No active session")
-        minBet = session.currentMinBet
-        activePlayers = [sp.player for sp in session.sessionPlayers if sp.player and not sp.player.eliminated and sp.player.id != player.id]
-        totalCollected = 0
-        for p in activePlayers:
-            collected = min(minBet, p.klaava)
-            p.klaava -= collected
-            totalCollected += collected
-        player.klaava += totalCollected
-        player.powerup = None
-        db.commit()
-        db.refresh(player)
-        for p in activePlayers:
+    result = handler(player, data, db)
+    player.powerup = None
+    db.commit()
+    db.refresh(player)
+    if "target" in result:
+        db.refresh(result["target"])
+    if "affected" in result:
+        for p in result["affected"]:
             db.refresh(p)
-        return {"effect": "tax", "amount": totalCollected, "player": player, "affected": activePlayers}
-
-    if powerupId == "swap":
-        if not data.targetId:
-            raise HTTPException(status_code=400, detail="Swap requires a target")
-        target = getPlayer(db, data.targetId)
-        if not target:
-            raise HTTPException(status_code=404, detail="Target not found")
-        player.klaava, target.klaava = target.klaava, player.klaava
-        player.powerup = None
-        db.commit()
-        db.refresh(player)
-        db.refresh(target)
-        return {"effect": "swap", "player": player, "target": target}
-
-    raise HTTPException(status_code=400, detail=f"{powerupId} triggers automatically — no manual use needed")
+    return {**result, "player": player}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getGameState, getSession, advanceGame, endGame } from '../../../services/gameService'
+import { getGameState, getSession, advanceGame, endGame, addPlayerToSession } from '../../../services/gameService'
+import { getPlayers } from '../../../services/playerService'
 import { getGames } from '../../../services/gamesService'
 import BlackjackControl from '../blackjack/BlackjackControl'
 import HiLoControl from '../hiLo/HiLoControl'
@@ -12,21 +13,15 @@ import RoundFlowBar from './RoundFlowBar'
 import EndRoundPanel from '../endRound/EndRoundPanel'
 import { formatKlaava } from '../../../utils/formatters'
 
-const GAME_NAME_TO_PHASE = {
-  'Hi-Lo': 'hiLo',
-  'Blackjack': 'blackjack',
-  'Roulette': 'roulette',
-  'Auction': 'auction',
-}
-
-const GAME_PHASES = new Set(['hiLo', 'blackjack', 'roulette', 'auction', 'gambling'])
-
 const GAME_CONTROLS = [
   { id: 'hiLo', label: 'Hi-Lo' },
   { id: 'blackjack', label: 'Blackjack' },
   { id: 'roulette', label: 'Roulette' },
   { id: 'auction', label: 'Auction' },
 ]
+
+const GAME_NAME_TO_PHASE = Object.fromEntries(GAME_CONTROLS.map((g) => [g.label, g.id]))
+const GAME_PHASES = new Set([...GAME_CONTROLS.map((g) => g.id), 'gambling'])
 
 const ALL_PHASES = ['wheel', 'hiLo', 'blackjack', 'roulette', 'auction', 'shop', 'minigame', 'endRound', 'loans', 'gambling', 'result']
 
@@ -35,6 +30,7 @@ const TABS = ['wheel', 'game', 'minigame', 'transfer']
 function GameControlView() {
   const [gameState, setGameState] = useState(null)
   const [players, setPlayers] = useState([])
+  const [allPlayers, setAllPlayers] = useState([])
   const [games, setGames] = useState([])
   const [selectedTab, setSelectedTab] = useState('wheel')
   const [selectedGame, setSelectedGame] = useState(null)
@@ -43,6 +39,7 @@ function GameControlView() {
   useEffect(() => {
     getGameState().then(setGameState)
     getGames().then(setGames)
+    getPlayers().then((all) => setAllPlayers(all.filter((p) => !p.eliminated)))
   }, [])
 
   useEffect(() => {
@@ -63,6 +60,12 @@ function GameControlView() {
 
   function refreshPlayers() {
     getSession().then((s) => setPlayers(s.players.filter((p) => !p.eliminated)))
+    getPlayers().then((all) => setAllPlayers(all.filter((p) => !p.eliminated)))
+  }
+
+  async function handleAddPlayer(playerId) {
+    await addPlayerToSession(playerId)
+    refreshPlayers()
   }
 
   function refreshGames() {
@@ -87,9 +90,12 @@ function GameControlView() {
   }
 
   const phase = gameState.phase
+  const isSitAndGo = gameState.gameMode === 'sit_and_go'
   const nextPhaseInfo = getNextPhaseInfo()
   const nextMinBet = Math.round(gameState.minBet * gameState.betMultiplier)
   const nextMaxBet = Math.round(gameState.maxBet * gameState.betMultiplier)
+  const sessionPlayerIds = new Set(players.map((p) => p.id))
+  const addablePlayers = allPlayers.filter((p) => !sessionPlayerIds.has(p.id))
 
   return (
     <div>
@@ -97,7 +103,7 @@ function GameControlView() {
 
       <RoundFlowBar phase={phase} />
 
-      {players.length === 1 && phase !== 'finished' && (
+      {players.length === 1 && phase !== 'finished' && !isSitAndGo && (
         <div className="bg-yellow-900 border border-yellow-700 rounded-xl px-5 py-4 mb-4 flex items-center justify-between">
           <div>
             <p className="font-semibold text-yellow-300">Last player standing</p>
@@ -112,7 +118,24 @@ function GameControlView() {
         </div>
       )}
 
-      {phase === 'finished' && (
+      {isSitAndGo && addablePlayers.length > 0 && (
+        <div className="bg-gray-800 border border-gray-700 rounded-xl px-5 py-4 mb-4">
+          <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Add player</p>
+          <div className="flex gap-2 flex-wrap">
+            {addablePlayers.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => handleAddPlayer(p.id)}
+                className="bg-indigo-700 hover:bg-indigo-600 text-white text-sm px-3 py-1.5 rounded"
+              >
+                + {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {phase === 'finished' && !isSitAndGo && (
         <div className="bg-gray-800 border border-gray-600 rounded-xl px-5 py-4 mb-4 flex items-center justify-between">
           <p className="text-gray-300 text-sm">Winner screen is live on display</p>
           <button

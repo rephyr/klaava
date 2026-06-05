@@ -5,6 +5,8 @@ from database.connection import getDb
 from database.schemas import TournamentCreate, TournamentRead, GameStartRequest, GameSessionRead, GameAdvanceRequest, TransferRequest
 from database import crud
 from routers import hiLo, blackjack, roulette, auction
+from services.powerup import applyWinMultiplier, applyLossShield
+from database.crud import checkBankruptcy
 import random
 
 router = APIRouter(tags=["game"])
@@ -199,23 +201,17 @@ def playDoubleOrNothing(data: DoubleOrNothingRequest, db: Session = Depends(getD
             continue
         actualAmount = min(data.amount, player.klaava)
         won = random.random() < 0.5
-        powerupTriggered = None
         if won:
-            effectiveGain = actualAmount
-            if player.powerup in ("doubleDown", "jackpot"):
-                mult = 3 if player.powerup == "jackpot" else 2
-                effectiveGain *= mult
-                powerupTriggered = player.powerup
-                player.powerup = None
+            effectiveGain, powerupTriggered = applyWinMultiplier(player, actualAmount)
             player.klaava += effectiveGain
             actualAmount = effectiveGain
         else:
-            if player.powerup in ("shield", "immunity"):
-                powerupTriggered = player.powerup
-                player.powerup = None
+            powerupTriggered = applyLossShield(player)
+            if powerupTriggered is not None:
                 actualAmount = 0
             else:
                 player.klaava -= actualAmount
+                checkBankruptcy(db, player)
         results.append({
             "playerId": player.id,
             "name": player.name,
@@ -254,26 +250,24 @@ def playLastRoll(db: Session = Depends(getDb)):
     blockedLosers = {}
     totalLost = 0
     for p in losers:
-        if p.powerup in ("shield", "immunity"):
-            blockedLosers[p.id] = p.powerup
-            p.powerup = None
+        pt = applyLossShield(p)
+        if pt:
+            blockedLosers[p.id] = pt
         else:
             actual = min(amount, p.klaava)
             p.klaava -= actual
             totalLost += actual
+            checkBankruptcy(db, p)
 
     boostedWinners = {}
     perWinner = totalLost // len(winners)
     remainder = totalLost % len(winners)
     for i, p in enumerate(winners):
         base = perWinner + (1 if i < remainder else 0)
-        if p.powerup in ("doubleDown", "jackpot"):
-            mult = 3 if p.powerup == "jackpot" else 2
-            boostedWinners[p.id] = p.powerup
-            p.powerup = None
-            p.klaava += base * mult
-        else:
-            p.klaava += base
+        boosted, pt = applyWinMultiplier(p, base)
+        if pt:
+            boostedWinners[p.id] = pt
+        p.klaava += boosted
 
     db.commit()
 
@@ -292,6 +286,16 @@ def playLastRoll(db: Session = Depends(getDb)):
 
     _liveState["minigame"] = {"type": "lastRoll", "results": results, "amount": amount}
     return {"results": results, "amount": amount}
+
+class AddPlayerRequest(BaseModel):
+    playerId: int
+
+@router.post("/game/addPlayer", response_model=GameSessionRead)
+def addPlayerToSession(data: AddPlayerRequest, db: Session = Depends(getDb)):
+    session = crud.addPlayerToSession(db, data.playerId)
+    if not session:
+        raise HTTPException(status_code=400, detail="Cannot add player — no active session, player not found, already in session, or eliminated")
+    return sessionToDict(session)
 
 @router.get("/game/session", response_model=GameSessionRead)
 def getSession(db: Session = Depends(getDb)):

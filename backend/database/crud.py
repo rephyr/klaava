@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from .models import Player, Tournament, TournamentPlayer, Round, Transaction, Loan, Settings, Game, Leaderboard
 from .schemas import PlayerCreate, PlayerUpdate, TournamentCreate, LoanCreate, SettingsUpdate, GameStartRequest, GameAdvanceRequest, TransferRequest, GameCreate
+from services.powerup import applyWinMultiplier
 import math
 import json
 from datetime import datetime
@@ -69,11 +70,15 @@ def createLoan(db: Session, data: LoanCreate):
 def getLoansByPlayer(db: Session, playerId: int):
     return db.query(Loan).filter(Loan.playerId == playerId, Loan.status == "active").all()
 
+LOAN_MAX_TURNS = 3
+
+def calcInterest(loan) -> int:
+    return math.ceil(loan.amountOwed * loan.interestRate)
+
 def applyInterest(db: Session):
     activeLoans = db.query(Loan).filter(Loan.status == "active").all()
     for loan in activeLoans:
-        interest = math.ceil(loan.amountOwed * loan.interestRate)
-        loan.amountOwed = loan.amountOwed + interest
+        loan.amountOwed += calcInterest(loan)
     db.commit()
     return activeLoans
 
@@ -168,12 +173,7 @@ def transferKlaava(db: Session, data: TransferRequest):
     if not loserImmune and loser.klaava < data.amount:
         return None
 
-    effectiveAmount = data.amount
-    if winner.powerup in ("doubleDown", "jackpot"):
-        mult = 3 if winner.powerup == "jackpot" else 2
-        effectiveAmount *= mult
-        winnerPowerupTriggered = winner.powerup
-        winner.powerup = None
+    effectiveAmount, winnerPowerupTriggered = applyWinMultiplier(winner, data.amount)
 
     if loserImmune:
         loserPowerupTriggered = "immunity"
@@ -253,13 +253,13 @@ def advanceGame(db: Session, data: GameAdvanceRequest):
         ).all()
         for loan in activeLoans:
             loan.turnsActive += 1
-            if loan.turnsActive >= 3:
+            if loan.turnsActive >= LOAN_MAX_TURNS:
                 loan.status = "defaulted"
                 player = db.query(Player).filter(Player.id == loan.playerId).first()
                 if player:
                     player.eliminated = True
             else:
-                loan.amountOwed = round(loan.amountOwed * (1 + loan.interestRate))
+                loan.amountOwed += calcInterest(loan)
         settings = getSettings(db)
         session.currentMinBet = round(session.currentMinBet * settings.betMultiplier)
         session.currentMaxBet = round(session.currentMaxBet * settings.betMultiplier)
@@ -372,6 +372,26 @@ def toggleGame(db: Session, gameId: int):
     db.commit()
     db.refresh(game)
     return game
+
+def addPlayerToSession(db: Session, playerId: int):
+    session = getActiveSession(db)
+    if not session:
+        return None
+    player = getPlayer(db, playerId)
+    if not player or player.eliminated:
+        return None
+    already = db.query(TournamentPlayer).filter(
+        TournamentPlayer.tournamentId == session.id,
+        TournamentPlayer.playerId == playerId,
+    ).first()
+    if already:
+        return None
+    settings = getSettings(db)
+    player.klaava = settings.startingKlaava
+    db.add(TournamentPlayer(tournamentId=session.id, playerId=playerId))
+    db.commit()
+    db.refresh(session)
+    return session
 
 def backupToJson(db: Session):
     players = getPlayers(db)

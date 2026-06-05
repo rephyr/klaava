@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from database.connection import getDb
 from database.crud import getPlayer, getActiveSession, checkBankruptcy
+from services.powerup import applyWinMultiplier, applyLossShield
 from pydantic import BaseModel
 import random
 
@@ -90,20 +91,14 @@ def revealCard(db: Session = Depends(getDb)):
             continue
         correct = bet["guess"] == cardResult or (cardResult == "equal")
         bet["result"] = "correct" if correct else "wrong"
-        bet["powerupTriggered"] = None
         if correct:
-            gain = bet["amount"]
-            if player.powerup in ("doubleDown", "jackpot"):
-                mult = 3 if player.powerup == "jackpot" else 2
-                gain *= mult
-                bet["powerupTriggered"] = player.powerup
-                player.powerup = None
+            gain, pt = applyWinMultiplier(player, bet["amount"])
+            bet["powerupTriggered"] = pt
             player.klaava += gain
         else:
-            if player.powerup in ("shield", "immunity"):
-                bet["powerupTriggered"] = player.powerup
-                player.powerup = None
-            else:
+            pt = applyLossShield(player)
+            bet["powerupTriggered"] = pt
+            if pt is None:
                 player.klaava = max(0, player.klaava - bet["amount"])
                 checkBankruptcy(db, player)
     db.commit()
