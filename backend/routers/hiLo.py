@@ -88,7 +88,7 @@ def revealCard(db: Session = Depends(getDb)):
         player = getPlayer(db, bet["playerId"])
         if not player:
             continue
-        correct = bet["guess"] == cardResult or (cardResult == "equal")
+        correct = bet["guess"] == cardResult
         bet["result"] = "correct" if correct else "wrong"
         bet["powerupTriggered"] = None
         if correct:

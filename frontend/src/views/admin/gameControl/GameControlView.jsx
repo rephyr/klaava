@@ -259,6 +259,7 @@ function GameControlView() {
             players={players}
             gameState={gameState}
             refreshPlayers={refreshPlayers}
+            onPhaseChange={(p) => handleAdvance({ phase: p })}
           />
         )}
 
