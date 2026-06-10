@@ -71,13 +71,14 @@ def testLoanUsesSettingsInterestRate(client):
     assert loan["interestRate"] == 0.20
 
 def testLoanExceedingMaxAmountIsRejected(client):
-    client.put("/settings/", json={"maxLoanAmount": 200})
+    # maxLoan = maxBet * 4; set maxBet=50 → limit=200
+    client.put("/settings/", json={"maxBet": 50})
     player = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
     res = client.post("/loans/", json={"playerId": player["id"], "amount": 201})
     assert res.status_code == 400
 
 def testLoanWithinMaxAmountIsAllowed(client):
-    client.put("/settings/", json={"maxLoanAmount": 200})
+    client.put("/settings/", json={"maxBet": 50})
     player = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
     res = client.post("/loans/", json={"playerId": player["id"], "amount": 200})
     assert res.status_code == 200

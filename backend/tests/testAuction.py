@@ -173,14 +173,16 @@ def testAuctionCannotEndWhenIdle(client):
     res = client.post("/auction/end")
     assert res.status_code == 400
 
-def testAuctionWinnerAlreadyHasItemFails(client):
+def testAuctionWinnerAlreadyHasItemGetsReplaced(client):
     reset(client)
     player = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
     client.put(f"/players/{player['id']}", json={"powerup": "shield"})
     client.post("/auction/start", json={"itemId": "heist"})
     client.post("/auction/bid", json={"playerId": player["id"], "amount": 100})
     res = client.post("/auction/end")
-    assert res.status_code == 400
+    assert res.status_code == 200
+    updated = client.get(f"/players/{player['id']}").json()
+    assert updated["powerup"] == "heist"
     reset(client)
 
 

@@ -11,20 +11,20 @@ def testDoubleOrNothingWin(client):
     assert result["amount"] == 100
 
 def testDoubleOrNothingLose(client):
+    # Losses no longer deduct klaava — house-funded wins only
     player = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
     with patch("random.random", return_value=0.7):
         res = client.post("/minigame/doubleOrNothing", json={"playerIds": [player["id"]], "amount": 100})
     result = res.json()["results"][0]
     assert result["result"] == "lose"
-    assert result["klaava"] == 400
+    assert result["klaava"] == 500
 
-def testDoubleOrNothingCannotGoBelowZero(client):
+def testDoubleOrNothingLoseDoesNotChangeKlaava(client):
     player = client.post("/players/", json={"name": "test1", "klaava": 50}).json()
     with patch("random.random", return_value=0.7):
         res = client.post("/minigame/doubleOrNothing", json={"playerIds": [player["id"]], "amount": 200})
     result = res.json()["results"][0]
-    assert result["klaava"] == 0
-    assert result["amount"] == 50
+    assert result["klaava"] == 50
 
 def testDoubleOrNothingMultiplePlayers(client):
     p1 = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
@@ -41,7 +41,8 @@ def testDoubleOrNothingSkipsEliminatedPlayers(client):
     res = client.post("/minigame/doubleOrNothing", json={"playerIds": [player["id"]], "amount": 100})
     assert res.json()["results"] == []
 
-def testLastRollTransfersFromLoserToWinner(client):
+def testLastRollWinnerGainsFromHouse(client):
+    # House pays winner — loser klaava is unchanged
     p1 = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
     p2 = client.post("/players/", json={"name": "test2", "klaava": 500}).json()
     client.post("/game/start", json={"playerIds": [p1["id"], p2["id"]]})
@@ -51,7 +52,8 @@ def testLastRollTransfersFromLoserToWinner(client):
     results = {r["playerId"]: r for r in res.json()["results"]}
     assert results[p1["id"]]["outcome"] == "winner"
     assert results[p2["id"]]["outcome"] == "loser"
-    assert results[p1["id"]]["klaava"] + results[p2["id"]]["klaava"] == 1000
+    assert results[p1["id"]]["klaava"] == 550  # won minBet (50)
+    assert results[p2["id"]]["klaava"] == 500  # unchanged
 
 def testLastRollNeutralPlayerUnchanged(client):
     p1 = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
