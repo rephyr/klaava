@@ -9,6 +9,7 @@ import KlaavaTransfer from '../transfer/KlaavaTransfer'
 import RouletteControl from '../roulette/RouletteControl'
 import MinigameControl from '../minigame/MinigameControl'
 import AuctionControl from '../auction/AuctionControl'
+import RavitControl from '../ravit/RavitControl'
 import RoundFlowBar from './RoundFlowBar'
 import EndRoundPanel from '../endRound/EndRoundPanel'
 import { formatKlaava } from '../../../utils/formatters'
@@ -18,6 +19,7 @@ const GAME_CONTROLS = [
   { id: 'blackjack', label: 'Blackjack' },
   { id: 'roulette', label: 'Roulette' },
   { id: 'auction', label: 'Auction' },
+  { id: 'ravit', label: 'Ravit' },
 ]
 
 const GAME_NAME_TO_PHASE = { ...Object.fromEntries(GAME_CONTROLS.map((g) => [g.label, g.id])), 'Ravit': 'ravit' }
@@ -215,7 +217,7 @@ function GameControlView() {
       <div className="bg-gray-900 rounded-b-2xl rounded-tr-2xl p-5 mb-8">
         {selectedTab === 'wheel' && (
           <WheelControl
-            key={gameState?.round}
+            key={`${gameState?.sessionId}-${gameState?.round}`}
             onPhaseChange={(p) => handleAdvance({ phase: p })}
             games={games}
             onWheelResult={(winner) => {
@@ -225,12 +227,8 @@ function GameControlView() {
             }}
             onGamesChanged={refreshGames}
             onStartGame={(phaseId) => {
-              if (phaseId === 'ravit') {
-                setSelectedTab('minigame')
-              } else {
-                setSelectedGame(phaseId)
-                setSelectedTab('game')
-              }
+              setSelectedGame(phaseId)
+              setSelectedTab('game')
             }}
           />
         )}
@@ -285,6 +283,14 @@ function GameControlView() {
                 refreshPlayers={refreshPlayers}
               />
             )}
+            {selectedGame === 'ravit' && (
+              <RavitControl
+                players={players}
+                gameState={gameState}
+                onPhaseChange={(p) => handleAdvance({ phase: p })}
+                refreshPlayers={refreshPlayers}
+              />
+            )}
             {!selectedGame && (
               <p className="text-gray-500 text-sm">Select a game above to see controls.</p>
             )}
@@ -296,7 +302,6 @@ function GameControlView() {
             players={players}
             gameState={gameState}
             refreshPlayers={refreshPlayers}
-            onPhaseChange={(p) => handleAdvance({ phase: p })}
           />
         )}
 

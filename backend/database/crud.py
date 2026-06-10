@@ -361,6 +361,10 @@ def deleteGame(db: Session, gameId: int):
     return game
 
 def resetAllGames(db: Session):
+    existing_names = {g.name for g in db.query(Game).all()}
+    for name in DEFAULT_GAMES:
+        if name not in existing_names:
+            db.add(Game(name=name, isActive=True))
     db.query(Game).update({"isActive": True})
     db.commit()
 
