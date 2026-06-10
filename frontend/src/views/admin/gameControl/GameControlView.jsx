@@ -161,7 +161,7 @@ function GameControlView() {
         </div>
         <div>
           <p className="text-gray-500 text-xs mb-1">Round</p>
-          <p className="font-semibold">{gameState.round}</p>
+          <p className="font-semibold">{gameState.round}{gameState.totalRounds ? `/${gameState.totalRounds}` : ''}</p>
         </div>
         <div>
           <p className="text-gray-500 text-xs mb-1">Level</p>
@@ -175,15 +175,16 @@ function GameControlView() {
           <p className="text-gray-500 text-xs mb-1">Max bet</p>
           <p className="font-semibold text-green-400">{formatKlaava(gameState.maxBet)}</p>
         </div>
-        {nextPhaseInfo && (
-          <button
-            onClick={() => handleAdvance({ phase: nextPhaseInfo.phase })}
-            className="ml-auto bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded-lg font-semibold"
-          >
-            {nextPhaseInfo.label}
-          </button>
-        )}
       </div>
+
+      {nextPhaseInfo && (
+        <button
+          onClick={() => handleAdvance({ phase: nextPhaseInfo.phase })}
+          className="w-full bg-green-700 hover:bg-green-600 active:bg-green-800 text-white font-bold py-4 rounded-xl mb-4 text-lg tracking-wide transition-colors"
+        >
+          {nextPhaseInfo.label}
+        </button>
+      )}
 
       {phase === 'endRound' && (
         <section className="mb-8">
@@ -191,7 +192,9 @@ function GameControlView() {
           <div className="bg-gray-900 rounded-2xl p-5">
             <EndRoundPanel
               players={players}
+              isLastRound={gameState.totalRounds ? gameState.round >= gameState.totalRounds : false}
               onNextRound={() => handleAdvance({ nextRound: true, phase: 'wheel' })}
+              onFinalRound={() => handleAdvance({ phase: 'finished' })}
               refreshPlayers={refreshPlayers}
             />
           </div>

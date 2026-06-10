@@ -1,12 +1,37 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { startHorseRace, placeHorseRaceBet, runHorseRace, resetHorseRace } from '../../../services/minigameService'
 import { formatKlaava } from '../../../utils/formatters'
+
+const AUTO_ADVANCE_SECONDS = 10
 
 function RavitControl({ players, gameState, refreshPlayers, onPhaseChange }) {
   const [raceState, setRaceState] = useState(null)
   const [raceBets, setRaceBets] = useState({})
   const [loading, setLoading] = useState(false)
   const [raceError, setRaceError] = useState(null)
+  const [countdown, setCountdown] = useState(null)
+  const countdownRef = useRef(null)
+
+  useEffect(() => {
+    if (raceState?.status !== 'finished') return
+    setCountdown(AUTO_ADVANCE_SECONDS)
+    countdownRef.current = setInterval(() => {
+      setCountdown((n) => {
+        if (n <= 1) {
+          clearInterval(countdownRef.current)
+          onPhaseChange?.('shop')
+          return null
+        }
+        return n - 1
+      })
+    }, 1000)
+    return () => clearInterval(countdownRef.current)
+  }, [raceState?.status])
+
+  function cancelAutoAdvance() {
+    clearInterval(countdownRef.current)
+    setCountdown(null)
+  }
 
   async function handleStartRace() {
     setRaceError(null)
@@ -123,7 +148,28 @@ function RavitControl({ players, gameState, refreshPlayers, onPhaseChange }) {
               </div>
             ))}
           </div>
-          <button onClick={handleResetRace} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded w-fit">New race</button>
+          <div className="flex gap-2 items-center mt-1">
+            {countdown != null ? (
+              <>
+                <button
+                  onClick={() => { onPhaseChange?.('shop') }}
+                  className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold"
+                >
+                  → Shop ({countdown}s)
+                </button>
+                <button onClick={cancelAutoAdvance} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-2 rounded">
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
+                  → Shop
+                </button>
+                <button onClick={handleResetRace} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded">New race</button>
+              </>
+            )}
+          </div>
         </div>
       )}
 

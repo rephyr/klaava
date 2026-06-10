@@ -55,6 +55,7 @@ class GameSessionRead(BaseModel):
     currentLevel: int
     currentMinBet: int
     currentMaxBet: int
+    totalRounds: int
     players: list[PlayerRead]
 
     model_config = {"from_attributes": True}
@@ -109,6 +110,7 @@ class SettingsRead(BaseModel):
     loanInterestRate: float
     maxLoanAmount: int
     gameMode: str
+    totalRounds: int
 
     model_config = {"from_attributes": True}
 
@@ -120,3 +122,4 @@ class SettingsUpdate(BaseModel):
     loanInterestRate: Optional[float] = None
     maxLoanAmount: Optional[int] = None
     gameMode: Optional[str] = None
+    totalRounds: Optional[int] = None

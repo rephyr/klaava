@@ -43,3 +43,17 @@ def testUpdateBetFields(client):
     assert data["minBet"] == 25
     assert data["maxBet"] == 500
     assert data["betMultiplier"] == 3.0
+
+def testTotalRoundsDefault(client):
+    data = client.get("/settings/").json()
+    assert data["totalRounds"] == 3
+
+def testUpdateTotalRounds(client):
+    res = client.put("/settings/", json={"totalRounds": 5})
+    assert res.json()["totalRounds"] == 5
+
+def testUpdateTotalRoundsDoesNotAffectOtherFields(client):
+    client.put("/settings/", json={"totalRounds": 5})
+    data = client.get("/settings/").json()
+    assert data["totalRounds"] == 5
+    assert data["startingKlaava"] == 500

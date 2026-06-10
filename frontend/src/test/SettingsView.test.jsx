@@ -2,8 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
-import SettingsView from './SettingsView'
-import * as settingsService from '../../../services/settingsService'
+import SettingsView from '../views/admin/settings/SettingsView'
+import * as settingsService from '../services/settingsService'
 
 const mockSettings = {
   startingKlaava: 500,
@@ -13,6 +13,7 @@ const mockSettings = {
   loanInterestRate: 0.1,
   maxLoanAmount: 200,
   gameMode: 'tournament',
+  totalRounds: 3,
 }
 
 function renderSettings() {
@@ -39,6 +40,7 @@ test('renders settings fields', async () => {
     expect(screen.getByLabelText('Bet multiplier per level')).toBeInTheDocument()
     expect(screen.getByLabelText('Max loan amount')).toBeInTheDocument()
     expect(screen.getByLabelText('Interest rate per round')).toBeInTheDocument()
+    expect(screen.getByLabelText('Number of rounds')).toBeInTheDocument()
   })
 })
 
@@ -51,12 +53,29 @@ test('loads settings values from API', async () => {
   })
 })
 
+test('loads totalRounds value from API', async () => {
+  renderSettings()
+  await waitFor(() => {
+    expect(screen.getByLabelText('Number of rounds')).toHaveValue(3)
+  })
+})
+
 test('save button calls updateSettings', async () => {
   const user = userEvent.setup()
   renderSettings()
   await waitFor(() => screen.getByText('Save'))
   await user.click(screen.getByText('Save'))
   expect(settingsService.updateSettings).toHaveBeenCalled()
+})
+
+test('save includes totalRounds', async () => {
+  const user = userEvent.setup()
+  renderSettings()
+  await waitFor(() => screen.getByText('Save'))
+  await user.click(screen.getByText('Save'))
+  expect(settingsService.updateSettings).toHaveBeenCalledWith(
+    expect.objectContaining({ totalRounds: 3 })
+  )
 })
 
 test('shows saved confirmation after save', async () => {

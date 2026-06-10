@@ -1,4 +1,4 @@
-import { formatKlaava, formatPlayerName } from './formatters'
+import { formatKlaava, formatPlayerName } from '../utils/formatters'
 
 test('formatKlaava formats amount with kl unit', () => {
   expect(formatKlaava(500)).toBe('500 kl')

@@ -27,6 +27,7 @@ def sessionToDict(session):
         "currentLevel": session.currentLevel,
         "currentMinBet": session.currentMinBet,
         "currentMaxBet": session.currentMaxBet,
+        "totalRounds": session.totalRounds,
         "players": [sp.player for sp in session.sessionPlayers if sp.player is not None],
     }
 
@@ -53,6 +54,7 @@ def getGameState(db: Session = Depends(getDb)):
             "betMultiplier": settings.betMultiplier,
             "gameMode": session.mode,
             "sessionId": session.id,
+            "totalRounds": session.totalRounds,
         }
     return {
         **base,
@@ -64,6 +66,7 @@ def getGameState(db: Session = Depends(getDb)):
         "betMultiplier": settings.betMultiplier,
         "gameMode": settings.gameMode,
         "sessionId": None,
+        "totalRounds": settings.totalRounds,
     }
 
 @router.post("/game/start", response_model=GameSessionRead)
@@ -101,6 +104,7 @@ def advanceGame(data: GameAdvanceRequest, db: Session = Depends(getDb)):
         "level": session.currentLevel,
         "minBet": session.currentMinBet,
         "maxBet": session.currentMaxBet,
+        "totalRounds": session.totalRounds,
     }
 
 @router.post("/game/transfer")
@@ -300,7 +304,7 @@ HORSE_NAMES = [
     "Nopsa", "Tuisku", "Hurja", "Vinha", "Salama",
 ]
 HORSE_COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#f97316", "#06b6d4", "#ec4899"]
-ATTACK_NAMES = ["Potku", "Puraisu", "Törmäys", "Isku", "Kavioisku", "Häntäisku", "Rynkky"]
+ATTACK_NAMES = ["Potku", "Puraisu", "Läpsäisy", "Sylkäisy",]
 TRACK_LENGTH = 24
 HORSE_MAX_HP = 10
 

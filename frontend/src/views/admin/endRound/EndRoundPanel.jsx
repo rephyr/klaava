@@ -3,7 +3,7 @@ import { getLoansByPlayer, partialRepayLoan, repayLoan } from '../../../services
 import { updatePlayer } from '../../../services/playerService'
 import { formatKlaava } from '../../../utils/formatters'
 
-function EndRoundPanel({ players, onNextRound, refreshPlayers }) {
+function EndRoundPanel({ players, isLastRound, onNextRound, onFinalRound, refreshPlayers }) {
   const [loans, setLoans] = useState({})
   const [payAmounts, setPayAmounts] = useState({})
 
@@ -139,12 +139,21 @@ function EndRoundPanel({ players, onNextRound, refreshPlayers }) {
         <p className="text-gray-500 text-sm">No active players.</p>
       )}
 
-      <button
-        onClick={onNextRound}
-        className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2.5 rounded font-semibold w-fit"
-      >
-        Start next round → Wheel
-      </button>
+      {isLastRound ? (
+        <button
+          onClick={onFinalRound}
+          className="mt-2 bg-yellow-600 hover:bg-yellow-500 text-white text-sm px-5 py-2.5 rounded font-semibold w-fit"
+        >
+          Show winner screen →
+        </button>
+      ) : (
+        <button
+          onClick={onNextRound}
+          className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2.5 rounded font-semibold w-fit"
+        >
+          Start next round → Wheel
+        </button>
+      )}
     </div>
   )
 }

@@ -1,12 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getAuctionItems, getAuctionState, startAuction, placeBid, endAuction, resetAuction } from '../../../services/auctionService'
 import { formatKlaava } from '../../../utils/formatters'
+
+const AUTO_ADVANCE_SECONDS = 10
 
 function AuctionControl({ players, gameState, onPhaseChange, refreshPlayers }) {
   const [items, setItems] = useState([])
   const [state, setState] = useState(null)
   const [selectedItem, setSelectedItem] = useState(null)
   const [bidAmounts, setBidAmounts] = useState({})
+  const [countdown, setCountdown] = useState(null)
+  const countdownRef = useRef(null)
+
+  useEffect(() => {
+    if (state?.status !== 'finished') return
+    setCountdown(AUTO_ADVANCE_SECONDS)
+    countdownRef.current = setInterval(() => {
+      setCountdown((n) => {
+        if (n <= 1) {
+          clearInterval(countdownRef.current)
+          onPhaseChange?.('shop')
+          return null
+        }
+        return n - 1
+      })
+    }, 1000)
+    return () => clearInterval(countdownRef.current)
+  }, [state?.status])
+
+  function cancelAutoAdvance() {
+    clearInterval(countdownRef.current)
+    setCountdown(null)
+  }
 
   useEffect(() => {
     getAuctionItems().then(setItems)
@@ -137,19 +162,24 @@ function AuctionControl({ players, gameState, onPhaseChange, refreshPlayers }) {
 
       <div className="flex gap-2">
         {state.status === 'open' && (
-          <button
-            onClick={handleEnd}
-            className="bg-green-700 hover:bg-green-600 text-white text-sm px-4 py-2 rounded"
-          >
+          <button onClick={handleEnd} className="bg-green-700 hover:bg-green-600 text-white text-sm px-4 py-2 rounded">
             End auction
           </button>
         )}
-        <button
-          onClick={handleReset}
-          className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded"
-        >
-          {state.status === 'finished' ? 'New auction' : 'Cancel'}
-        </button>
+        {state.status === 'finished' && countdown != null ? (
+          <>
+            <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
+              → Shop ({countdown}s)
+            </button>
+            <button onClick={cancelAutoAdvance} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-2 rounded">
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button onClick={state.status === 'finished' ? handleReset : handleReset} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded">
+            {state.status === 'finished' ? 'New auction' : 'Cancel'}
+          </button>
+        )}
       </div>
     </div>
   )

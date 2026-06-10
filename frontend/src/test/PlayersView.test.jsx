@@ -2,8 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
-import PlayersView from './PlayersView'
-import * as playerService from '../../../services/playerService'
+import PlayersView from '../views/admin/players/PlayersView'
+import * as playerService from '../services/playerService'
 
 const mockPlayers = [
   { id: 1, name: 'Janne',  klaava: 500, rfid: 'AA:BB:CC:01', eliminated: false },

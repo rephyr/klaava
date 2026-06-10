@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
-import DisplayView from './DisplayView'
-import * as gameService from '../../services/gameService'
+import DisplayView from '../views/display/DisplayView'
+import * as gameService from '../services/gameService'
 
 const mockPlayers = [
   { id: 1, name: 'Janne', klaava: 500, rfid: 'AA:BB:CC:01', eliminated: false },
@@ -17,6 +17,7 @@ const mockGameState = {
   maxBet: 200,
   betMultiplier: 2.0,
   sessionId: 42,
+  totalRounds: 3,
 }
 
 const mockSession = {
@@ -54,24 +55,23 @@ test('renders title', () => {
 test('renders players from session', async () => {
   renderDisplay()
   await waitFor(() => {
-    expect(screen.getByText('Janne')).toBeInTheDocument()
-    expect(screen.getByText('Sara')).toBeInTheDocument()
+    expect(screen.getAllByText('Janne').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Sara').length).toBeGreaterThan(0)
   })
 })
 
 test('renders player klaava balance', async () => {
   renderDisplay()
   await waitFor(() => {
-    expect(screen.getByText('500 kl')).toBeInTheDocument()
-    expect(screen.getByText('300 kl')).toBeInTheDocument()
+    expect(screen.getAllByText('500 kl').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('300 kl').length).toBeGreaterThan(0)
   })
 })
 
-test('renders game state info', async () => {
+test('renders round info in leaderboard', async () => {
   renderDisplay()
   await waitFor(() => {
-    expect(screen.getByText(/round/i)).toBeInTheDocument()
-    expect(screen.getByText(/level/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/round/i).length).toBeGreaterThan(0)
   })
 })
 
@@ -82,7 +82,7 @@ test('renders admin button', () => {
 
 test('shows lobby screen when no session', async () => {
   vi.spyOn(gameService, 'getGameState').mockResolvedValue({
-    phase: 'lobby', round: 0, level: 1, minBet: 50, maxBet: 200, betMultiplier: 2.0, sessionId: null,
+    phase: 'lobby', round: 0, level: 1, minBet: 50, maxBet: 200, betMultiplier: 2.0, sessionId: null, totalRounds: 3,
   })
   renderDisplay()
   await waitFor(() => {

@@ -151,6 +151,7 @@ def startGame(db: Session, data: GameStartRequest):
         currentLevel=1,
         currentMinBet=settings.minBet,
         currentMaxBet=settings.maxBet,
+        totalRounds=settings.totalRounds,
     )
     db.add(tournament)
     db.flush()

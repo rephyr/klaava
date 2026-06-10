@@ -29,6 +29,7 @@ class Tournament(Base):
     currentLevel = Column(Integer, default=1)
     currentMinBet = Column(Integer, default=0)
     currentMaxBet = Column(Integer, default=0)
+    totalRounds = Column(Integer, default=3)
     createdAt = Column(DateTime, server_default=func.now())
 
     rounds = relationship("Round", back_populates="tournament")
@@ -108,6 +109,7 @@ class Settings(Base):
     loanInterestRate = Column(Float, default=0.10)
     maxLoanAmount = Column(Integer, default=200)
     gameMode = Column(String, default="tournament")  # sit_and_go | tournament
+    totalRounds = Column(Integer, default=3)
 
 class Leaderboard(Base):
     __tablename__ = "leaderboards"

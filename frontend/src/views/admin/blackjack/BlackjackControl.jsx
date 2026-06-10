@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { startBlackjack, hit, stand, split, doubleDown, dealerPlay, resetBlackjack } from '../../../services/blackjackService'
 import { formatKlaava } from '../../../utils/formatters'
+
+const AUTO_ADVANCE_SECONDS = 10
 
 const RESULT_COLOR = {
   win:       'text-green-400',
@@ -55,8 +57,31 @@ function HandRow({ label, cards, total, status, result, amount, powerupTriggered
 function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }) {
   const [bets, setBets]       = useState({})
   const [bjState, setBjState] = useState(null)
+  const [countdown, setCountdown] = useState(null)
+  const countdownRef = useRef(null)
 
   const activePlayers = players.filter((p) => !p.eliminated)
+
+  useEffect(() => {
+    if (bjState?.status !== 'finished') return
+    setCountdown(AUTO_ADVANCE_SECONDS)
+    countdownRef.current = setInterval(() => {
+      setCountdown((n) => {
+        if (n <= 1) {
+          clearInterval(countdownRef.current)
+          onStateChange?.('shop')
+          return null
+        }
+        return n - 1
+      })
+    }, 1000)
+    return () => clearInterval(countdownRef.current)
+  }, [bjState?.status])
+
+  function cancelAutoAdvance() {
+    clearInterval(countdownRef.current)
+    setCountdown(null)
+  }
 
   async function handleStart() {
     const betList = activePlayers.map((p) => ({
@@ -189,9 +214,25 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
           </button>
         )}
         {bjState.status === 'finished' && (
-          <button onClick={handleReset} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded">
-            New round
-          </button>
+          countdown != null ? (
+            <>
+              <button onClick={() => onStateChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
+                → Shop ({countdown}s)
+              </button>
+              <button onClick={cancelAutoAdvance} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-2 rounded">
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => onStateChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
+                → Shop
+              </button>
+              <button onClick={handleReset} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded">
+                New round
+              </button>
+            </>
+          )
         )}
       </div>
 

@@ -53,6 +53,7 @@ function SettingsView() {
       loanInterestRate: Number(form.loanInterestRate),
       maxLoanAmount: Number(form.maxLoanAmount),
       gameMode: form.gameMode,
+      totalRounds: Number(form.totalRounds),
     })
     setSaved(true)
   }
@@ -80,6 +81,12 @@ function SettingsView() {
                 <option value="sit_and_go">Sit and go</option>
               </select>
             </div>
+            <SettingField
+              label="Number of rounds"
+              id="totalRounds"
+              value={form.totalRounds}
+              onChange={(e) => handleChange('totalRounds', e.target.value)}
+            />
             <SettingField
               label="Starting klaava"
               id="startingKlaava"

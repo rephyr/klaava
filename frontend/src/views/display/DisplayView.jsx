@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getGameState, getSession } from '../../services/gameService'
 import { getLoansByPlayer } from '../../services/loanService'
-import { formatKlaava } from '../../utils/formatters'
 import GamblingView from './gambling/GamblingView'
 import MinigameView from './minigame/MinigameView'
 import ShopView from './shop/ShopView'
@@ -17,6 +16,7 @@ import EndRoundView from './endRound/EndRoundView'
 import FinishedView from './finished/FinishedView'
 import LoansharkOverlay from './loanshark/LoansharkOverlay'
 import BankruptcyOverlay from './bankruptcy/BankruptcyOverlay'
+import LiveLeaderboard from './leaderboard/LiveLeaderboard'
 
 const POLL_INTERVAL = 3000
 
@@ -100,18 +100,14 @@ function DisplayView() {
     return null
   }
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+  const activePlayers = (session?.players ?? []).filter((p) => !p.eliminated)
+  const showLeaderboard = !!gameState?.sessionId && !['lobby', 'finished', 'result'].includes(phase)
 
-      <div className="flex justify-between items-center px-8 py-4 border-b border-gray-800">
+  return (
+    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
+
+      <div className="flex justify-between items-center px-8 py-3 border-b border-gray-800 shrink-0">
         <h1 className="text-2xl font-bold">Klaava</h1>
-        {gameState?.sessionId && (
-          <div className="flex gap-6 text-sm text-gray-400 capitalize">
-            <span>Phase: <span className="text-white">{phase}</span></span>
-            <span>Round: <span className="text-white">{gameState.round}</span></span>
-            <span>Level: <span className="text-white">{gameState.level}</span></span>
-          </div>
-        )}
         <button
           onClick={() => navigate('/admin')}
           className="text-sm text-gray-500 hover:text-white border border-gray-700 hover:border-gray-500 px-3 py-1 rounded transition-colors"
@@ -120,8 +116,21 @@ function DisplayView() {
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col p-8">
-        {renderPhase()}
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 flex flex-col p-8 overflow-y-auto min-w-0">
+          {renderPhase()}
+        </div>
+
+        {showLeaderboard && (
+          <div className="w-48 shrink-0">
+            <LiveLeaderboard
+              players={activePlayers}
+              round={gameState.round}
+              totalRounds={gameState.totalRounds}
+              level={gameState.level}
+            />
+          </div>
+        )}
       </div>
 
       {(() => {
