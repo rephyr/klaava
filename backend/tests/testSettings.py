@@ -6,8 +6,8 @@ def testGetSettingsReturnsDefaults(client):
     assert data["minBet"] == 50
     assert data["maxBet"] == 200
     assert data["betMultiplier"] == 2.0
-    assert data["loanInterestRate"] == 0.10
-    assert data["maxLoanAmount"] == 200
+    assert data["loanInterestRate"] == 0.25
+    assert data["maxLoanAmount"] == 800  # derived: maxBet(200) * 4
     assert data["gameMode"] == "tournament"
 
 def testGetSettingsCreatesRowIfMissing(client):
@@ -31,10 +31,10 @@ def testUpdateGameMode(client):
     assert res.json()["gameMode"] == "sit_and_go"
 
 def testUpdateMultipleFields(client):
-    res = client.put("/settings/", json={"startingKlaava": 300, "maxLoanAmount": 500, "loanInterestRate": 0.20})
+    res = client.put("/settings/", json={"startingKlaava": 300, "loanInterestRate": 0.20})
     data = res.json()
     assert data["startingKlaava"] == 300
-    assert data["maxLoanAmount"] == 500
+    assert data["maxLoanAmount"] == 800  # derived: maxBet(200) * 4
     assert data["loanInterestRate"] == 0.20
 
 def testUpdateBetFields(client):
@@ -46,7 +46,7 @@ def testUpdateBetFields(client):
 
 def testTotalRoundsDefault(client):
     data = client.get("/settings/").json()
-    assert data["totalRounds"] == 3
+    assert data["totalRounds"] == 5
 
 def testUpdateTotalRounds(client):
     res = client.put("/settings/", json={"totalRounds": 5})
@@ -57,3 +57,17 @@ def testUpdateTotalRoundsDoesNotAffectOtherFields(client):
     data = client.get("/settings/").json()
     assert data["totalRounds"] == 5
     assert data["startingKlaava"] == 500
+
+def testGamblingRoundsDefault(client):
+    data = client.get("/settings/").json()
+    assert data["gamblingRounds"] == 3
+
+def testUpdateGamblingRounds(client):
+    res = client.put("/settings/", json={"gamblingRounds": 5})
+    assert res.json()["gamblingRounds"] == 5
+
+def testGamblingRoundsIndependentOfTotalRounds(client):
+    client.put("/settings/", json={"totalRounds": 7, "gamblingRounds": 2})
+    data = client.get("/settings/").json()
+    assert data["totalRounds"] == 7
+    assert data["gamblingRounds"] == 2

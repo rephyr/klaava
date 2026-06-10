@@ -1,14 +1,38 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { startHiLo, revealCard, nextRound, placeBet, getHiLoState } from '../../../services/hiLoService'
 import { formatKlaava } from '../../../utils/formatters'
 
-function HiLoControl({ players, gameState, onPhaseChange, refreshPlayers }) {
+const AUTO_ADVANCE_SECONDS = 10
+
+function HiLoControl({ players, gameState, gamblingRounds = 3, onPhaseChange, refreshPlayers }) {
   const [hiloState, setHiloState] = useState(null)
   const [bets, setBets] = useState({})
+  const [roundsPlayed, setRoundsPlayed] = useState(0)
+  const [countdown, setCountdown] = useState(null)
+  const countdownRef = useRef(null)
 
   useEffect(() => {
     getHiLoState().then(setHiloState)
   }, [])
+
+  function startCountdown() {
+    setCountdown(AUTO_ADVANCE_SECONDS)
+    countdownRef.current = setInterval(() => {
+      setCountdown((n) => {
+        if (n <= 1) {
+          clearInterval(countdownRef.current)
+          onPhaseChange?.('shop')
+          return null
+        }
+        return n - 1
+      })
+    }, 1000)
+  }
+
+  function cancelAutoAdvance() {
+    clearInterval(countdownRef.current)
+    setCountdown(null)
+  }
 
   const status = hiloState?.status ?? 'idle'
   const currentCard = hiloState?.currentCard
@@ -31,11 +55,12 @@ function HiLoControl({ players, gameState, onPhaseChange, refreshPlayers }) {
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button
           onClick={async () => {
             const s = await startHiLo()
             setHiloState(s)
+            setRoundsPlayed(0)
             await onPhaseChange('hiLo')
             setBets({})
           }}
@@ -48,23 +73,44 @@ function HiLoControl({ players, gameState, onPhaseChange, refreshPlayers }) {
             const s = await revealCard()
             setHiloState(s)
             refreshPlayers()
+            if (s.status === 'revealed') {
+              const next = roundsPlayed + 1
+              setRoundsPlayed(next)
+              if (next >= gamblingRounds) startCountdown()
+            }
           }}
           disabled={status !== 'waiting'}
           className="bg-green-700 hover:bg-green-600 text-white text-sm px-4 py-2 rounded disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Reveal
         </button>
-        <button
-          onClick={async () => {
-            const s = await nextRound()
-            setHiloState(s)
-            setBets({})
-          }}
-          disabled={status !== 'revealed'}
-          className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Next card
-        </button>
+        {status === 'revealed' && roundsPlayed < gamblingRounds && (
+          <button
+            onClick={async () => {
+              const s = await nextRound()
+              setHiloState(s)
+              setBets({})
+            }}
+            className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded"
+          >
+            Next card ({roundsPlayed}/{gamblingRounds})
+          </button>
+        )}
+        {status === 'revealed' && roundsPlayed >= gamblingRounds && countdown != null && (
+          <>
+            <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
+              → Shop ({countdown}s)
+            </button>
+            <button onClick={cancelAutoAdvance} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-2 rounded">
+              Cancel
+            </button>
+          </>
+        )}
+        {status === 'revealed' && roundsPlayed >= gamblingRounds && countdown == null && (
+          <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
+            → Shop
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">

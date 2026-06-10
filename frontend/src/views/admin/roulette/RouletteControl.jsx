@@ -16,14 +16,14 @@ const RESULT_NUMBER_COLOR = {
   green: 'text-green-400',
 }
 
-function RouletteControl({ players, gameState, onPhaseChange, refreshPlayers }) {
+function RouletteControl({ players, gameState, gamblingRounds = 3, onPhaseChange, refreshPlayers }) {
   const [state, setState] = useState(null)
   const [bets, setBets] = useState({})
   const [countdown, setCountdown] = useState(null)
+  const [roundsPlayed, setRoundsPlayed] = useState(0)
   const countdownRef = useRef(null)
 
-  useEffect(() => {
-    if (state?.status !== 'finished') return
+  function startCountdown() {
     setCountdown(AUTO_ADVANCE_SECONDS)
     countdownRef.current = setInterval(() => {
       setCountdown((n) => {
@@ -35,8 +35,7 @@ function RouletteControl({ players, gameState, onPhaseChange, refreshPlayers }) 
         return n - 1
       })
     }, 1000)
-    return () => clearInterval(countdownRef.current)
-  }, [state?.status])
+  }
 
   function cancelAutoAdvance() {
     clearInterval(countdownRef.current)
@@ -80,9 +79,20 @@ function RouletteControl({ players, gameState, onPhaseChange, refreshPlayers }) 
     const s = await spin()
     setState(s)
     refreshPlayers()
+    if (s.status === 'finished') {
+      const next = roundsPlayed + 1
+      setRoundsPlayed(next)
+      if (next >= gamblingRounds) startCountdown()
+    }
   }
 
   async function handleReset() {
+    const s = await resetRoulette()
+    setState(s)
+    setBets({})
+  }
+
+  async function handleNextSpin() {
     const s = await resetRoulette()
     setState(s)
     setBets({})
@@ -228,7 +238,11 @@ function RouletteControl({ players, gameState, onPhaseChange, refreshPlayers }) 
           </button>
         )}
         {state.status === 'finished' && (
-          countdown != null ? (
+          roundsPlayed < gamblingRounds ? (
+            <button onClick={handleNextSpin} className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded font-semibold">
+              Next spin ({roundsPlayed}/{gamblingRounds})
+            </button>
+          ) : countdown != null ? (
             <>
               <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
                 → Shop ({countdown}s)
@@ -241,9 +255,6 @@ function RouletteControl({ players, gameState, onPhaseChange, refreshPlayers }) 
             <>
               <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
                 → Shop
-              </button>
-              <button onClick={handleReset} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded">
-                New round
               </button>
             </>
           )

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getGameState, getSession, advanceGame, endGame, addPlayerToSession } from '../../../services/gameService'
 import { getPlayers } from '../../../services/playerService'
+import { getLoansByPlayer, repayLoan, defaultLoan } from '../../../services/loanService'
 import { getGames } from '../../../services/gamesService'
 import BlackjackControl from '../blackjack/BlackjackControl'
 import HiLoControl from '../hiLo/HiLoControl'
@@ -37,6 +38,7 @@ function GameControlView() {
   const [selectedTab, setSelectedTab] = useState('wheel')
   const [selectedGame, setSelectedGame] = useState(null)
   const [wheelWinner, setWheelWinner] = useState(null)
+  const [pendingLoans, setPendingLoans] = useState(null)
 
   useEffect(() => {
     getGameState().then(setGameState)
@@ -54,6 +56,18 @@ function GameControlView() {
     setWheelWinner(null)
     setSelectedTab('wheel')
   }, [gameState?.round])
+
+  async function handleGoToFinished() {
+    const loanResults = await Promise.all(
+      players.map((p) => getLoansByPlayer(p.id).then((loans) => ({ player: p, loans })))
+    )
+    const active = loanResults.filter((r) => r.loans.length > 0)
+    if (active.length > 0) {
+      setPendingLoans(active)
+    } else {
+      handleAdvance({ phase: 'finished' })
+    }
+  }
 
   async function handleAdvance(data) {
     const updated = await advanceGame(data)
@@ -104,6 +118,81 @@ function GameControlView() {
   const sessionPlayerIds = new Set(players.map((p) => p.id))
   const addablePlayers = allPlayers.filter((p) => !sessionPlayerIds.has(p.id))
 
+  if (pendingLoans) {
+    return (
+      <div>
+        <h2 className="text-xl font-semibold mb-6">Settle Loans Before Winner Screen</h2>
+        <div className="flex flex-col gap-3 max-w-lg">
+          {pendingLoans.map(({ player, loans }) => (
+            <div key={player.id} className="bg-red-950 border border-red-700 rounded-xl p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <p className="font-semibold text-red-300 text-base w-28">{player.name}</p>
+                <p className="text-green-400 text-sm">{formatKlaava(player.klaava)}</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                {loans.map((loan) => (
+                  <div key={loan.id} className="bg-gray-800 rounded-lg px-3 py-2 flex items-center gap-3 text-sm">
+                    <span className="text-gray-300">{formatKlaava(loan.amount)}</span>
+                    <span className="text-red-400">owes {formatKlaava(loan.amountOwed)}</span>
+                    <span className="text-gray-500 text-xs">{(loan.interestRate * 100).toFixed(0)}%</span>
+                    <div className="flex gap-2 ml-auto">
+                      <button
+                        onClick={async () => {
+                          await repayLoan(loan.id)
+                          const updated = pendingLoans.map((r) =>
+                            r.player.id === player.id
+                              ? { ...r, loans: r.loans.filter((l) => l.id !== loan.id) }
+                              : r
+                          ).filter((r) => r.loans.length > 0)
+                          if (updated.length === 0) {
+                            setPendingLoans(null)
+                            handleAdvance({ phase: 'finished' })
+                          } else {
+                            setPendingLoans(updated)
+                          }
+                          refreshPlayers()
+                        }}
+                        className="bg-green-700 hover:bg-green-600 text-white text-xs px-3 py-1 rounded"
+                      >
+                        Repay {formatKlaava(loan.amountOwed)}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          await defaultLoan(loan.id)
+                          const updated = pendingLoans.map((r) =>
+                            r.player.id === player.id
+                              ? { ...r, loans: r.loans.filter((l) => l.id !== loan.id) }
+                              : r
+                          ).filter((r) => r.loans.length > 0)
+                          if (updated.length === 0) {
+                            setPendingLoans(null)
+                            handleAdvance({ phase: 'finished' })
+                          } else {
+                            setPendingLoans(updated)
+                          }
+                          refreshPlayers()
+                        }}
+                        className="bg-red-800 hover:bg-red-700 text-white text-xs px-3 py-1 rounded"
+                      >
+                        Default
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <button
+            onClick={() => setPendingLoans(null)}
+            className="text-gray-500 text-sm hover:text-gray-300 mt-2 self-start"
+          >
+            ← Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">Game Control</h2>
@@ -117,7 +206,7 @@ function GameControlView() {
             <p className="text-yellow-400 text-sm">{players[0]?.name} wins!</p>
           </div>
           <button
-            onClick={() => handleAdvance({ phase: 'finished' })}
+            onClick={handleGoToFinished}
             className="bg-yellow-600 hover:bg-yellow-500 text-white font-semibold px-5 py-2 rounded-lg"
           >
             Show Winner Screen
@@ -194,7 +283,7 @@ function GameControlView() {
               players={players}
               isLastRound={gameState.totalRounds ? gameState.round >= gameState.totalRounds : false}
               onNextRound={() => handleAdvance({ nextRound: true, phase: 'wheel' })}
-              onFinalRound={() => handleAdvance({ phase: 'finished' })}
+              onFinalRound={handleGoToFinished}
               refreshPlayers={refreshPlayers}
             />
           </div>
@@ -258,6 +347,7 @@ function GameControlView() {
               <HiLoControl
                 players={players}
                 gameState={gameState}
+                gamblingRounds={gameState.gamblingRounds ?? 3}
                 onPhaseChange={(p) => handleAdvance({ phase: p })}
                 refreshPlayers={refreshPlayers}
               />
@@ -266,6 +356,7 @@ function GameControlView() {
               <BlackjackControl
                 players={players}
                 defaultBet={gameState.minBet}
+                gamblingRounds={gameState.gamblingRounds ?? 3}
                 onStateChange={(p) => handleAdvance({ phase: p })}
                 refreshPlayers={refreshPlayers}
               />
@@ -274,6 +365,7 @@ function GameControlView() {
               <RouletteControl
                 players={players}
                 gameState={gameState}
+                gamblingRounds={gameState.gamblingRounds ?? 3}
                 onPhaseChange={(p) => handleAdvance({ phase: p })}
                 refreshPlayers={refreshPlayers}
               />
@@ -282,6 +374,7 @@ function GameControlView() {
               <AuctionControl
                 players={players}
                 gameState={gameState}
+                gamblingRounds={gameState.gamblingRounds ?? 3}
                 onPhaseChange={(p) => handleAdvance({ phase: p })}
                 refreshPlayers={refreshPlayers}
               />
@@ -290,6 +383,7 @@ function GameControlView() {
               <RavitControl
                 players={players}
                 gameState={gameState}
+                gamblingRounds={gameState.gamblingRounds ?? 3}
                 onPhaseChange={(p) => handleAdvance({ phase: p })}
                 refreshPlayers={refreshPlayers}
               />

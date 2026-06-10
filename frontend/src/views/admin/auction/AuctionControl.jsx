@@ -4,16 +4,16 @@ import { formatKlaava } from '../../../utils/formatters'
 
 const AUTO_ADVANCE_SECONDS = 10
 
-function AuctionControl({ players, gameState, onPhaseChange, refreshPlayers }) {
+function AuctionControl({ players, gameState, gamblingRounds = 3, onPhaseChange, refreshPlayers }) {
   const [items, setItems] = useState([])
   const [state, setState] = useState(null)
   const [selectedItem, setSelectedItem] = useState(null)
   const [bidAmounts, setBidAmounts] = useState({})
   const [countdown, setCountdown] = useState(null)
+  const [roundsPlayed, setRoundsPlayed] = useState(0)
   const countdownRef = useRef(null)
 
-  useEffect(() => {
-    if (state?.status !== 'finished') return
+  function startCountdown() {
     setCountdown(AUTO_ADVANCE_SECONDS)
     countdownRef.current = setInterval(() => {
       setCountdown((n) => {
@@ -25,8 +25,7 @@ function AuctionControl({ players, gameState, onPhaseChange, refreshPlayers }) {
         return n - 1
       })
     }, 1000)
-    return () => clearInterval(countdownRef.current)
-  }, [state?.status])
+  }
 
   function cancelAutoAdvance() {
     clearInterval(countdownRef.current)
@@ -62,6 +61,11 @@ function AuctionControl({ players, gameState, onPhaseChange, refreshPlayers }) {
       const s = await endAuction()
       setState(s)
       refreshPlayers()
+      if (s.status === 'finished') {
+        const next = roundsPlayed + 1
+        setRoundsPlayed(next)
+        if (next >= gamblingRounds) startCountdown()
+      }
     } catch {}
   }
 
@@ -166,7 +170,11 @@ function AuctionControl({ players, gameState, onPhaseChange, refreshPlayers }) {
             End auction
           </button>
         )}
-        {state.status === 'finished' && countdown != null ? (
+        {state.status === 'finished' && roundsPlayed < gamblingRounds ? (
+          <button onClick={handleReset} className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded font-semibold">
+            Next auction ({roundsPlayed}/{gamblingRounds})
+          </button>
+        ) : state.status === 'finished' && countdown != null ? (
           <>
             <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
               → Shop ({countdown}s)
@@ -175,9 +183,13 @@ function AuctionControl({ players, gameState, onPhaseChange, refreshPlayers }) {
               Cancel
             </button>
           </>
+        ) : state.status === 'finished' ? (
+          <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
+            → Shop
+          </button>
         ) : (
-          <button onClick={state.status === 'finished' ? handleReset : handleReset} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded">
-            {state.status === 'finished' ? 'New auction' : 'Cancel'}
+          <button onClick={handleReset} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded">
+            Cancel
           </button>
         )}
       </div>

@@ -28,6 +28,7 @@ def sessionToDict(session):
         "currentMinBet": session.currentMinBet,
         "currentMaxBet": session.currentMaxBet,
         "totalRounds": session.totalRounds,
+        "gamblingRounds": session.gamblingRounds,
         "players": [sp.player for sp in session.sessionPlayers if sp.player is not None],
     }
 
@@ -55,6 +56,7 @@ def getGameState(db: Session = Depends(getDb)):
             "gameMode": session.mode,
             "sessionId": session.id,
             "totalRounds": session.totalRounds,
+            "gamblingRounds": session.gamblingRounds,
         }
     return {
         **base,
@@ -67,6 +69,7 @@ def getGameState(db: Session = Depends(getDb)):
         "gameMode": settings.gameMode,
         "sessionId": None,
         "totalRounds": settings.totalRounds,
+        "gamblingRounds": settings.gamblingRounds,
     }
 
 @router.post("/game/start", response_model=GameSessionRead)
@@ -105,6 +108,7 @@ def advanceGame(data: GameAdvanceRequest, db: Session = Depends(getDb)):
         "minBet": session.currentMinBet,
         "maxBet": session.currentMaxBet,
         "totalRounds": session.totalRounds,
+        "gamblingRounds": session.gamblingRounds,
     }
 
 @router.post("/game/transfer")
@@ -293,9 +297,6 @@ def getSession(db: Session = Depends(getDb)):
 def createTournament(data: TournamentCreate, db: Session = Depends(getDb)):
     return crud.createTournament(db, data)
 
-
-# ── Horse Race ────────────────────────────────────────────────────────────────
-
 HORSE_NAMES = [
     "Ukko", "Tuulikki", "Rauhala", "Pitkämäki", "Laukki", "Talvikki",
     "Salamaveto", "Myrsky", "Loimu", "Varjo", "Halla", "Aava", "Vauhti",
@@ -404,7 +405,7 @@ def _snapshot(horses):
 def _simulateRace(horses):
     rounds = [{"roundNumber": 0, "positions": _snapshot(horses), "events": []}]
 
-    for rn in range(1, 25):
+    for rn in range(1, 9):
         events = []
 
         # Initiate new fights between nearby horses

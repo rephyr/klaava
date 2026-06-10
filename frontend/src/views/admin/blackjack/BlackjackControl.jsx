@@ -54,16 +54,16 @@ function HandRow({ label, cards, total, status, result, amount, powerupTriggered
   )
 }
 
-function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }) {
+function BlackjackControl({ players, defaultBet, gamblingRounds = 3, onStateChange, refreshPlayers }) {
   const [bets, setBets]       = useState({})
   const [bjState, setBjState] = useState(null)
   const [countdown, setCountdown] = useState(null)
+  const [roundsPlayed, setRoundsPlayed] = useState(0)
   const countdownRef = useRef(null)
 
   const activePlayers = players.filter((p) => !p.eliminated)
 
-  useEffect(() => {
-    if (bjState?.status !== 'finished') return
+  function startCountdown() {
     setCountdown(AUTO_ADVANCE_SECONDS)
     countdownRef.current = setInterval(() => {
       setCountdown((n) => {
@@ -75,8 +75,7 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
         return n - 1
       })
     }, 1000)
-    return () => clearInterval(countdownRef.current)
-  }, [bjState?.status])
+  }
 
   function cancelAutoAdvance() {
     clearInterval(countdownRef.current)
@@ -100,15 +99,22 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
   )
 
   async function handleDealer() {
-    setBjState(await dealerPlay())
+    const result = await dealerPlay()
+    setBjState(result)
     onStateChange('blackjack')
     refreshPlayers?.()
+    if (result.status === 'finished') {
+      const next = roundsPlayed + 1
+      setRoundsPlayed(next)
+      if (next >= gamblingRounds) startCountdown()
+    }
   }
 
   async function handleReset() {
     await resetBlackjack()
     setBjState(null)
     setBets({})
+    setRoundsPlayed(0)
   }
 
   if (!bjState || bjState.status === 'idle') {
@@ -214,7 +220,11 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
           </button>
         )}
         {bjState.status === 'finished' && (
-          countdown != null ? (
+          roundsPlayed < gamblingRounds ? (
+            <button onClick={handleReset} className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded font-semibold">
+              Next hand ({roundsPlayed}/{gamblingRounds})
+            </button>
+          ) : countdown != null ? (
             <>
               <button onClick={() => onStateChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
                 → Shop ({countdown}s)
@@ -227,9 +237,6 @@ function BlackjackControl({ players, defaultBet, onStateChange, refreshPlayers }
             <>
               <button onClick={() => onStateChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
                 → Shop
-              </button>
-              <button onClick={handleReset} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded">
-                New round
               </button>
             </>
           )

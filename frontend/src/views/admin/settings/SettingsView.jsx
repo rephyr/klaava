@@ -51,9 +51,9 @@ function SettingsView() {
       maxBet: Number(form.maxBet),
       betMultiplier: Number(form.betMultiplier),
       loanInterestRate: Number(form.loanInterestRate),
-      maxLoanAmount: Number(form.maxLoanAmount),
       gameMode: form.gameMode,
       totalRounds: Number(form.totalRounds),
+      gamblingRounds: Number(form.gamblingRounds),
     })
     setSaved(true)
   }
@@ -82,10 +82,16 @@ function SettingsView() {
               </select>
             </div>
             <SettingField
-              label="Number of rounds"
+              label="Game rounds"
               id="totalRounds"
               value={form.totalRounds}
               onChange={(e) => handleChange('totalRounds', e.target.value)}
+            />
+            <SettingField
+              label="Gambling rounds per game"
+              id="gamblingRounds"
+              value={form.gamblingRounds}
+              onChange={(e) => handleChange('gamblingRounds', e.target.value)}
             />
             <SettingField
               label="Starting klaava"
@@ -123,12 +129,6 @@ function SettingsView() {
         <section>
           <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Loans</p>
           <div className="flex flex-col gap-4">
-            <SettingField
-              label="Max loan amount"
-              id="maxLoanAmount"
-              value={form.maxLoanAmount}
-              onChange={(e) => handleChange('maxLoanAmount', e.target.value)}
-            />
             <SettingField
               label="Interest rate per round"
               id="loanInterestRate"

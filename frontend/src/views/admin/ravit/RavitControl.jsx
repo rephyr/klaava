@@ -4,16 +4,16 @@ import { formatKlaava } from '../../../utils/formatters'
 
 const AUTO_ADVANCE_SECONDS = 10
 
-function RavitControl({ players, gameState, refreshPlayers, onPhaseChange }) {
+function RavitControl({ players, gameState, gamblingRounds = 3, refreshPlayers, onPhaseChange }) {
   const [raceState, setRaceState] = useState(null)
   const [raceBets, setRaceBets] = useState({})
   const [loading, setLoading] = useState(false)
   const [raceError, setRaceError] = useState(null)
   const [countdown, setCountdown] = useState(null)
+  const [roundsPlayed, setRoundsPlayed] = useState(0)
   const countdownRef = useRef(null)
 
-  useEffect(() => {
-    if (raceState?.status !== 'finished') return
+  function startCountdown() {
     setCountdown(AUTO_ADVANCE_SECONDS)
     countdownRef.current = setInterval(() => {
       setCountdown((n) => {
@@ -25,8 +25,7 @@ function RavitControl({ players, gameState, refreshPlayers, onPhaseChange }) {
         return n - 1
       })
     }, 1000)
-    return () => clearInterval(countdownRef.current)
-  }, [raceState?.status])
+  }
 
   function cancelAutoAdvance() {
     clearInterval(countdownRef.current)
@@ -62,6 +61,11 @@ function RavitControl({ players, gameState, refreshPlayers, onPhaseChange }) {
       const res = await runHorseRace()
       setRaceState(res)
       refreshPlayers()
+      if (res.status === 'finished') {
+        const next = roundsPlayed + 1
+        setRoundsPlayed(next)
+        if (next >= gamblingRounds) startCountdown()
+      }
     } catch (err) {
       setRaceError(err?.message ?? 'Race failed — check that bets are placed')
     } finally {
@@ -149,12 +153,13 @@ function RavitControl({ players, gameState, refreshPlayers, onPhaseChange }) {
             ))}
           </div>
           <div className="flex gap-2 items-center mt-1">
-            {countdown != null ? (
+            {roundsPlayed < gamblingRounds ? (
+              <button onClick={handleResetRace} className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded font-semibold">
+                Next race ({roundsPlayed}/{gamblingRounds})
+              </button>
+            ) : countdown != null ? (
               <>
-                <button
-                  onClick={() => { onPhaseChange?.('shop') }}
-                  className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold"
-                >
+                <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
                   → Shop ({countdown}s)
                 </button>
                 <button onClick={cancelAutoAdvance} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-2 rounded">
@@ -162,12 +167,9 @@ function RavitControl({ players, gameState, refreshPlayers, onPhaseChange }) {
                 </button>
               </>
             ) : (
-              <>
-                <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
-                  → Shop
-                </button>
-                <button onClick={handleResetRace} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded">New race</button>
-              </>
+              <button onClick={() => onPhaseChange?.('shop')} className="bg-green-700 hover:bg-green-600 text-white text-sm px-5 py-2 rounded font-semibold">
+                → Shop
+              </button>
             )}
           </div>
         </div>

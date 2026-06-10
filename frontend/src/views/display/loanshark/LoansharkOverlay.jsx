@@ -1,53 +1,78 @@
 import { useEffect, useState } from 'react'
 import { getSettings } from '../../../services/settingsService'
+import { loanTiers } from '../../../services/loanService'
 import { formatKlaava } from '../../../utils/formatters'
 import loanSharkImg from '../../../assets/loanShark.png'
 
-// Broke mode: player(s) just hit 0 klaava mid-game
+const TIER_COLORS = [
+  { bg: 'bg-gray-800', border: 'border-gray-600', badge: 'bg-gray-700 text-gray-300' },
+  { bg: 'bg-yellow-950', border: 'border-yellow-700', badge: 'bg-yellow-800 text-yellow-200' },
+  { bg: 'bg-orange-950', border: 'border-orange-700', badge: 'bg-orange-800 text-orange-200' },
+  { bg: 'bg-red-950', border: 'border-red-700', badge: 'bg-red-800 text-red-200' },
+]
+
 function BrokeView({ players, settings }) {
   const names = players.map((p) => p.name)
-  return (
-    <>
-      <img src={loanSharkImg} alt="Loan Shark" className="w-72 h-72 object-contain" />
+  const tiers = settings ? loanTiers(settings.maxBet, settings.loanInterestRate) : []
 
-      <div className="text-center flex flex-col gap-2">
-        <p className="text-gray-500 text-xs uppercase tracking-widest">Out of Klaava</p>
-        <div className="flex flex-col gap-1">
+  return (
+    <div className="flex w-full h-full items-center justify-center gap-12 px-16">
+      {/* Left: loanshark + broke players */}
+      <div className="flex flex-col items-center gap-6 shrink-0">
+        <img src={loanSharkImg} alt="Loan Shark" className="w-64 h-64 object-contain" style={{ animation: 'popIn 0.4s ease-out' }} />
+        <div className="flex flex-col items-center gap-1">
+          <p className="text-gray-500 text-xs uppercase tracking-widest">Out of Klaava</p>
           {names.map((name) => (
-            <p
-              key={name}
-              style={{ animation: 'popIn 0.4s ease-out' }}
-              className="text-6xl font-black text-red-400"
-            >
+            <p key={name} className="text-5xl font-black text-red-400" style={{ animation: 'popIn 0.4s ease-out' }}>
               {name}
             </p>
           ))}
         </div>
+        <p className="text-gray-400 text-lg text-center leading-relaxed">
+          I can help you out…<br />
+          <span className="text-gray-600 text-sm">for the right price.</span>
+        </p>
       </div>
 
-      <p className="text-2xl text-gray-300 text-center leading-relaxed">
-        {names.length === 1 ? "You're broke." : "You're both broke."}<br />
-        <span className="text-gray-500">Take a loan to stay in the game.</span>
-      </p>
-
-      {settings && (
-        <div className="flex gap-6 text-sm text-gray-600">
-          <span>Max loan: <span className="text-gray-400">{formatKlaava(settings.maxLoanAmount)}</span></span>
-          <span>Interest: <span className="text-gray-400">{(settings.loanInterestRate * 100).toFixed(0)}%</span></span>
-        </div>
-      )}
-    </>
+      {/* Right: 4 loan offer cards */}
+      <div className="flex flex-col gap-3 flex-1 max-w-lg">
+        <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Choose your deal</p>
+        {tiers.map((tier, i) => {
+          const colors = TIER_COLORS[i]
+          const repayment = Math.round(tier.amount * (1 + tier.rate))
+          return (
+            <div
+              key={tier.label}
+              style={{ animation: `fadeUp 0.4s ease-out ${i * 0.1}s both` }}
+              className={`rounded-2xl px-5 py-4 border ${colors.bg} ${colors.border} flex items-center gap-4`}
+            >
+              <div className="flex-1">
+                <p className="text-xl font-black text-white">{tier.label}</p>
+                <p className="text-3xl font-black text-green-400 mt-0.5">{formatKlaava(tier.amount)}</p>
+              </div>
+              <div className="text-right">
+                <span className={`text-xs font-bold px-2 py-1 rounded-full ${colors.badge}`}>
+                  {(tier.rate * 100).toFixed(0)}% interest
+                </span>
+                <p className="text-gray-500 text-xs mt-1.5">
+                  repay <span className="text-red-400 font-semibold">{formatKlaava(repayment)}</span>
+                </p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
-// End-of-round mode: show all debtors with their loan status
 function DebtView({ debtors }) {
   return (
-    <>
+    <div className="flex flex-col items-center gap-8 w-full max-w-3xl mx-auto">
       <img
         src={loanSharkImg}
         alt="Loan Shark"
-        className="w-72 h-72 object-contain"
+        className="w-60 h-60 object-contain"
         style={{ animation: 'popIn 0.5s ease-out' }}
       />
 
@@ -79,16 +104,11 @@ function DebtView({ debtors }) {
                   owes <span className="text-red-400 font-semibold">{formatKlaava(totalOwed)}</span>
                 </p>
               </div>
-
               <div className="text-right">
                 {isFinal ? (
-                  <p className="text-red-400 font-black text-sm uppercase tracking-wide">
-                    ⚠️ Pay now
-                  </p>
+                  <p className="text-red-400 font-black text-sm uppercase tracking-wide">⚠️ Pay now</p>
                 ) : (
-                  <p className="text-gray-500 text-sm">
-                    {roundsLeft} round{roundsLeft !== 1 ? 's' : ''} left
-                  </p>
+                  <p className="text-gray-500 text-sm">{roundsLeft} round{roundsLeft !== 1 ? 's' : ''} left</p>
                 )}
                 <p className="text-gray-600 text-xs mt-0.5">{maxTurns}/3 turns</p>
               </div>
@@ -96,7 +116,7 @@ function DebtView({ debtors }) {
           )
         })}
       </div>
-    </>
+    </div>
   )
 }
 
@@ -112,7 +132,7 @@ function LoansharkOverlay({ players, debtors }) {
   return (
     <div
       style={{ animation: 'fadeUp 0.4s ease-out' }}
-      className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 gap-8"
+      className="fixed inset-0 bg-slate-800 flex flex-col items-center justify-center z-50 gap-8"
     >
       {isDebtMode
         ? <DebtView debtors={debtors} />

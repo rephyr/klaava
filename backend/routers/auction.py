@@ -80,8 +80,6 @@ def endAuction(db: Session = Depends(getDb)):
         raise HTTPException(status_code=404, detail="Winner not found")
     if player.klaava < topBid["amount"]:
         raise HTTPException(status_code=400, detail="Winner no longer has enough klaava")
-    if player.powerup:
-        raise HTTPException(status_code=400, detail=f"{player.name} already holds an item — clear it first")
     player.klaava -= topBid["amount"]
     player.powerup = _state["item"]["id"]
     checkBankruptcy(db, player)

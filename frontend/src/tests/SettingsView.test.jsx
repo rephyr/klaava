@@ -11,9 +11,10 @@ const mockSettings = {
   maxBet: 200,
   betMultiplier: 2.0,
   loanInterestRate: 0.1,
-  maxLoanAmount: 200,
+  maxLoanAmount: 800,
   gameMode: 'tournament',
-  totalRounds: 3,
+  totalRounds: 5,
+  gamblingRounds: 3,
 }
 
 function renderSettings() {
@@ -38,9 +39,8 @@ test('renders settings fields', async () => {
     expect(screen.getByLabelText('Min bet')).toBeInTheDocument()
     expect(screen.getByLabelText('Max bet')).toBeInTheDocument()
     expect(screen.getByLabelText('Bet multiplier per level')).toBeInTheDocument()
-    expect(screen.getByLabelText('Max loan amount')).toBeInTheDocument()
     expect(screen.getByLabelText('Interest rate per round')).toBeInTheDocument()
-    expect(screen.getByLabelText('Number of rounds')).toBeInTheDocument()
+    expect(screen.getByLabelText('Game rounds')).toBeInTheDocument()
   })
 })
 
@@ -56,7 +56,7 @@ test('loads settings values from API', async () => {
 test('loads totalRounds value from API', async () => {
   renderSettings()
   await waitFor(() => {
-    expect(screen.getByLabelText('Number of rounds')).toHaveValue(3)
+    expect(screen.getByLabelText('Game rounds')).toHaveValue(5)
   })
 })
 
@@ -74,7 +74,7 @@ test('save includes totalRounds', async () => {
   await waitFor(() => screen.getByText('Save'))
   await user.click(screen.getByText('Save'))
   expect(settingsService.updateSettings).toHaveBeenCalledWith(
-    expect.objectContaining({ totalRounds: 3 })
+    expect.objectContaining({ totalRounds: 5, gamblingRounds: 3 })
   )
 })
 

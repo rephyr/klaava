@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { getPlayers } from '../../../services/playerService'
-import { getLoansByPlayer, createLoan, repayLoan, defaultLoan, applyInterest } from '../../../services/loanService'
+import { getLoansByPlayer, createLoan, repayLoan, defaultLoan, applyInterest, loanTiers } from '../../../services/loanService'
 import { getSettings } from '../../../services/settingsService'
 import { formatKlaava } from '../../../utils/formatters'
 
 function LoansView() {
   const [players, setPlayers] = useState([])
   const [loans, setLoans] = useState({})
-  const [loanAmounts, setLoanAmounts] = useState({})
   const [settings, setSettings] = useState(null)
   const [feedback, setFeedback] = useState(null)
 
@@ -34,17 +33,14 @@ function LoansView() {
     setTimeout(() => setFeedback(null), 3500)
   }
 
-  async function handleIssue(player) {
-    const amount = Number(loanAmounts[player.id])
-    if (!amount || amount <= 0) return
+  async function handleIssueTier(player, tier) {
     try {
-      const loan = await createLoan(player.id, amount)
+      const loan = await createLoan(player.id, tier.amount, tier.rate)
       setLoans((prev) => ({ ...prev, [player.id]: [...(prev[player.id] ?? []), loan] }))
-      setPlayers((prev) => prev.map((p) => p.id === player.id ? { ...p, klaava: p.klaava + amount } : p))
-      setLoanAmounts((prev) => ({ ...prev, [player.id]: '' }))
-      showFeedback(`Issued ${formatKlaava(amount)} loan to ${player.name}`)
+      setPlayers((prev) => prev.map((p) => p.id === player.id ? { ...p, klaava: p.klaava + tier.amount } : p))
+      showFeedback(`Issued ${tier.label} (${formatKlaava(tier.amount)}) to ${player.name}`)
     } catch {
-      showFeedback('Failed — exceeds max loan amount or server error', true)
+      showFeedback('Failed — player may already have a loan', true)
     }
   }
 
@@ -127,7 +123,8 @@ function LoansView() {
       <div className="flex flex-col gap-4">
         {players.map((player) => {
           const playerLoans = loans[player.id] ?? []
-          const amount = loanAmounts[player.id] ?? ''
+          const tiers = settings ? loanTiers(settings.maxBet, settings.loanInterestRate) : []
+          const hasLoan = playerLoans.length > 0
 
           const totalOwed = playerLoans.reduce((sum, l) => sum + l.amountOwed, 0)
           const isBankrupt = playerLoans.length > 0 && player.klaava < totalOwed
@@ -184,24 +181,21 @@ function LoansView() {
                 </div>
               )}
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setLoanAmounts((prev) => ({ ...prev, [player.id]: e.target.value }))}
-                  onKeyDown={(e) => e.key === 'Enter' && handleIssue(player)}
-                  placeholder="Amount"
-                  min={1}
-                  className="bg-gray-700 rounded px-2 py-1 text-sm text-white w-28"
-                />
-                <button
-                  onClick={() => handleIssue(player)}
-                  disabled={!amount || Number(amount) <= 0}
-                  className="bg-blue-700 hover:bg-blue-600 disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded"
-                >
-                  Issue loan
-                </button>
-              </div>
+              {!hasLoan && (
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  {tiers.map((tier) => (
+                    <button
+                      key={tier.label}
+                      onClick={() => handleIssueTier(player, tier)}
+                      className="bg-gray-700 hover:bg-gray-600 text-left rounded-lg px-3 py-2 text-sm"
+                    >
+                      <span className="font-semibold text-white">{tier.label}</span>
+                      <span className="text-green-400 ml-2">{formatKlaava(tier.amount)}</span>
+                      <span className="text-gray-500 text-xs ml-1">@ {(tier.rate * 100).toFixed(0)}%</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}

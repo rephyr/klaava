@@ -152,6 +152,7 @@ def startGame(db: Session, data: GameStartRequest):
         currentMinBet=settings.minBet,
         currentMaxBet=settings.maxBet,
         totalRounds=settings.totalRounds,
+        gamblingRounds=settings.gamblingRounds,
     )
     db.add(tournament)
     db.flush()
@@ -421,7 +422,7 @@ def backupToJson(db: Session):
             "maxBet": settings.maxBet,
             "betMultiplier": settings.betMultiplier,
             "loanInterestRate": settings.loanInterestRate,
-            "maxLoanAmount": settings.maxLoanAmount,
+            "maxLoanAmount": settings.maxBet * 4,
             "gameMode": settings.gameMode,
         },
         "loans": [

@@ -12,7 +12,7 @@ def createLoan(data: LoanCreate, db: Session = Depends(getDb)):
     settings = crud.getSettings(db)
     if data.interestRate is None:
         data = data.model_copy(update={"interestRate": settings.loanInterestRate})
-    maxLoan = settings.maxLoanAmount
+    maxLoan = settings.maxBet * 4
     if data.amount > maxLoan:
         raise HTTPException(status_code=400, detail=f"Loan amount exceeds maximum ({maxLoan})")
     existingLoan = crud.getLoansByPlayer(db, data.playerId)

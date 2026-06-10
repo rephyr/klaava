@@ -6,10 +6,14 @@ from database import crud
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
+def _injectDerived(s):
+    s.maxLoanAmount = s.maxBet * 4
+    return s
+
 @router.get("/", response_model=SettingsRead)
 def getSettings(db: Session = Depends(getDb)):
-    return crud.getSettings(db)
+    return _injectDerived(crud.getSettings(db))
 
 @router.put("/", response_model=SettingsRead)
 def updateSettings(data: SettingsUpdate, db: Session = Depends(getDb)):
-    return crud.updateSettings(db, data)
+    return _injectDerived(crud.updateSettings(db, data))
