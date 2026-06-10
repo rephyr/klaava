@@ -250,6 +250,7 @@ function HorseRaceResult({ minigame }) {
             <div key={horse.id} className="flex items-center gap-3">
               <div className="w-24 text-right">
                 <p className="text-sm font-semibold truncate">{horse.name}</p>
+                {horse.odds && !showResults && <p className="text-xs text-gray-500">{horse.odds}x</p>}
                 {!isDead && pos && (
                   <div className="mt-0.5 flex items-center justify-end gap-1">
                     <div className="w-14 h-1.5 bg-gray-700 rounded-full overflow-hidden">

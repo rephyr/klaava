@@ -334,7 +334,7 @@ def updateSettings(db: Session, data: SettingsUpdate):
     db.refresh(settings)
     return settings
 
-DEFAULT_GAMES = ["Hi-Lo", "Blackjack", "Roulette", "Auction"]
+DEFAULT_GAMES = ["Hi-Lo", "Blackjack", "Roulette", "Auction", "Ravit"]
 
 def getGames(db: Session):
     games = db.query(Game).all()

@@ -20,10 +20,10 @@ const GAME_CONTROLS = [
   { id: 'auction', label: 'Auction' },
 ]
 
-const GAME_NAME_TO_PHASE = Object.fromEntries(GAME_CONTROLS.map((g) => [g.label, g.id]))
-const GAME_PHASES = new Set([...GAME_CONTROLS.map((g) => g.id), 'gambling'])
+const GAME_NAME_TO_PHASE = { ...Object.fromEntries(GAME_CONTROLS.map((g) => [g.label, g.id])), 'Ravit': 'ravit' }
+const GAME_PHASES = new Set([...GAME_CONTROLS.map((g) => g.id), 'gambling', 'ravit'])
 
-const ALL_PHASES = ['wheel', 'hiLo', 'blackjack', 'roulette', 'auction', 'shop', 'minigame', 'endRound', 'loans', 'gambling', 'result']
+const ALL_PHASES = ['wheel', 'hiLo', 'blackjack', 'roulette', 'auction', 'ravit', 'shop', 'minigame', 'endRound', 'loans', 'gambling', 'result']
 
 const TABS = ['wheel', 'game', 'minigame', 'transfer']
 
@@ -47,6 +47,11 @@ function GameControlView() {
       getSession().then((s) => setPlayers(s.players.filter((p) => !p.eliminated)))
     }
   }, [gameState?.sessionId, gameState?.phase])
+
+  useEffect(() => {
+    setWheelWinner(null)
+    setSelectedTab('wheel')
+  }, [gameState?.round])
 
   async function handleAdvance(data) {
     const updated = await advanceGame(data)
@@ -210,6 +215,7 @@ function GameControlView() {
       <div className="bg-gray-900 rounded-b-2xl rounded-tr-2xl p-5 mb-8">
         {selectedTab === 'wheel' && (
           <WheelControl
+            key={gameState?.round}
             onPhaseChange={(p) => handleAdvance({ phase: p })}
             games={games}
             onWheelResult={(winner) => {
@@ -218,6 +224,14 @@ function GameControlView() {
               if (phaseId) setSelectedGame(phaseId)
             }}
             onGamesChanged={refreshGames}
+            onStartGame={(phaseId) => {
+              if (phaseId === 'ravit') {
+                setSelectedTab('minigame')
+              } else {
+                setSelectedGame(phaseId)
+                setSelectedTab('game')
+              }
+            }}
           />
         )}
 

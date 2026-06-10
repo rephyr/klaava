@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { getSettings } from '../../../services/settingsService'
 import { formatKlaava } from '../../../utils/formatters'
+import loanSharkImg from '../../../assets/loanShark.png'
 
 // Broke mode: player(s) just hit 0 klaava mid-game
 function BrokeView({ players, settings }) {
   const names = players.map((p) => p.name)
   return (
     <>
-      <p className="text-8xl">🦈</p>
+      <img src={loanSharkImg} alt="Loan Shark" className="w-72 h-72 object-contain" />
 
       <div className="text-center flex flex-col gap-2">
         <p className="text-gray-500 text-xs uppercase tracking-widest">Out of Klaava</p>
@@ -43,12 +44,12 @@ function BrokeView({ players, settings }) {
 function DebtView({ debtors }) {
   return (
     <>
-      <p
-        className="text-8xl"
+      <img
+        src={loanSharkImg}
+        alt="Loan Shark"
+        className="w-72 h-72 object-contain"
         style={{ animation: 'popIn 0.5s ease-out' }}
-      >
-        🦈
-      </p>
+      />
 
       <div className="text-center">
         <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">End of Round</p>

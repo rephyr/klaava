@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getSession } from '../../../services/gameService'
 import { getLoansByPlayer } from '../../../services/loanService'
 import { formatKlaava } from '../../../utils/formatters'
+import loanSharkImg from '../../../assets/loanShark.png'
 
 function LoanView() {
   const [players, setPlayers] = useState([])
@@ -29,7 +30,10 @@ function LoanView() {
 
   return (
     <div className="flex flex-col items-center gap-8 w-full max-w-4xl mx-auto">
-      <p className="text-gray-400 text-sm uppercase tracking-widest">Loans</p>
+      <div className="flex flex-col items-center gap-2">
+        <img src={loanSharkImg} alt="Loan Shark" className="w-40 h-40 object-contain" />
+        <p className="text-gray-400 text-sm uppercase tracking-widest">Loans</p>
+      </div>
 
       <div className="grid grid-cols-2 gap-4 w-full">
         {players.map((player) => {

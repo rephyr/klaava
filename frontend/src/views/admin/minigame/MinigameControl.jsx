@@ -99,8 +99,9 @@ function MinigameControl({ players, gameState, refreshPlayers, onPhaseChange }) 
           <div className="flex flex-col gap-3">
             <div className="flex gap-2 mb-1">
               {raceState.horses.map((h) => (
-                <span key={h.id} className="px-3 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: h.color }}>
+                <span key={h.id} className="px-3 py-1 rounded-full text-xs font-bold text-white flex items-center gap-1" style={{ backgroundColor: h.color }}>
                   {h.name}
+                  {h.odds && <span className="opacity-75 font-normal">{h.odds}x</span>}
                 </span>
               ))}
             </div>
@@ -115,10 +116,11 @@ function MinigameControl({ players, gameState, refreshPlayers, onPhaseChange }) 
                       <button
                         key={h.id}
                         onClick={() => updateRaceBet(player, h.id, bet.amount)}
-                        className="px-3 py-1 rounded text-xs font-semibold text-white"
+                        className="px-3 py-1 rounded text-xs font-semibold text-white flex flex-col items-center leading-tight"
                         style={{ backgroundColor: bet.horseId === h.id ? h.color : '#374151', opacity: bet.horseId === h.id ? 1 : 0.5 }}
                       >
-                        {h.name}
+                        <span>{h.name}</span>
+                        {h.odds && <span className="font-normal opacity-80">{h.odds}x</span>}
                       </button>
                     ))}
                   </div>

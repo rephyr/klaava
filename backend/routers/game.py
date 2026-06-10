@@ -292,7 +292,13 @@ def createTournament(data: TournamentCreate, db: Session = Depends(getDb)):
 
 # ── Horse Race ────────────────────────────────────────────────────────────────
 
-HORSE_NAMES = ["Myrsky", "Salama", "Ukko", "Tuisku", "Hurja", "Nopsa", "Vinha", "Laukki"]
+HORSE_NAMES = [
+    "Ukko", "Tuulikki", "Rauhala", "Pitkämäki", "Laukki", "Talvikki",
+    "Salamaveto", "Myrsky", "Loimu", "Varjo", "Halla", "Aava", "Vauhti",
+    "Takuu", "Taika", "Velho", "Veto", "Panos", "Turbovauhti", "Pikaliito",
+    "Ässä", "Hurjapää", "Tulikavio", "Viesker", "Täräyttäjä", "Vetäjä",
+    "Nopsa", "Tuisku", "Hurja", "Vinha", "Salama",
+]
 HORSE_COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#f97316", "#06b6d4", "#ec4899"]
 ATTACK_NAMES = ["Potku", "Puraisu", "Törmäys", "Isku", "Kavioisku", "Häntäisku", "Rynkky"]
 TRACK_LENGTH = 24
@@ -335,17 +341,29 @@ def _run_tiebreaker(tied_horses):
     winner_id = survivors[0]['id'] if survivors else tied_horses[0]['id']
     return winner_id, attacks
 
-def _makeHorses(n=8):
+def _assignOdds(horses):
+    totals = [h["speed"] + h["endurance"] + h["luck"] for h in horses]
+    minT, maxT = min(totals), max(totals)
+    for h, total in zip(horses, totals):
+        if maxT == minT:
+            base = 3.5
+        else:
+            t = (total - minT) / (maxT - minT)
+            base = 8.0 - t * 6.5
+        h["odds"] = max(1.5, round(base * random.uniform(0.85, 1.25), 1))
+
+def _makeHorses(n=5):
     names = random.sample(HORSE_NAMES, n)
-    return [
+    horses = [
         {
             "id": i + 1,
             "name": name,
             "color": HORSE_COLORS[i],
             "maxHp": HORSE_MAX_HP,
-            "speed": random.randint(1, 3),
-            "endurance": random.randint(2, 4),
-            "luck": random.randint(1, 3),
+            "speed": random.randint(1, 5),
+            "endurance": random.randint(1, 5),
+            "luck": random.randint(1, 5),
+            "odds": 0.0,
             "position": 0,
             "status": "racing",
             "hp": HORSE_MAX_HP,
@@ -354,10 +372,14 @@ def _makeHorses(n=8):
             "motivatedRoundsLeft": 0,
             "fightRoundsLeft": 0,
             "fightOpponent": None,
-            "staminaLeft": random.randint(3, 6),
+            "staminaLeft": 0,
         }
         for i, name in enumerate(names)
     ]
+    for h in horses:
+        h["staminaLeft"] = h["endurance"] * 3
+    _assignOdds(horses)
+    return horses
 
 def _snapshot(horses):
     return [
@@ -586,8 +608,8 @@ def runHorseRace(db: Session = Depends(getDb)):
         h["finalStatus"] = sim_by_id[h["id"]]["status"]
         h["finalPosition"] = sim_by_id[h["id"]]["position"]
 
-    # Resolve payouts — no losses; house funds the winners from a pot equal to total bets
-    house_pot = sum(b["amount"] for b in _horse_state["bets"])
+    # Resolve payouts — no losses; winners earn bet × horse odds (house-funded)
+    winner_odds = winner_horse["odds"] if winner_horse else 2.0
 
     for bet in _horse_state["bets"]:
         player = crud.getPlayer(db, bet["playerId"])
@@ -603,22 +625,14 @@ def runHorseRace(db: Session = Depends(getDb)):
             bet["payout"] = 0
             bet["klaava"] = player.klaava
 
-    winner_bets = [b for b in _horse_state["bets"] if b["horseId"] == winner_id]
-    total_winner_stake = sum(b["amount"] for b in winner_bets) or 1
-    for bet in winner_bets:
+    for bet in [b for b in _horse_state["bets"] if b["horseId"] == winner_id]:
         player = crud.getPlayer(db, bet["playerId"])
         if not player:
             continue
-        share = round((bet["amount"] / total_winner_stake) * house_pot)
-        powerupTriggered = None
-        if player.powerup in ("doubleDown", "jackpot"):
-            mult = 3 if player.powerup == "jackpot" else 2
-            share *= mult
-            powerupTriggered = player.powerup
-            player.powerup = None
-        player.klaava += share
+        payout, powerupTriggered = applyWinMultiplier(player, round(bet["amount"] * winner_odds))
+        player.klaava += payout
         bet["result"] = "win"
-        bet["payout"] = share
+        bet["payout"] = payout
         bet["powerupTriggered"] = powerupTriggered
         bet["klaava"] = player.klaava
 

@@ -86,7 +86,7 @@ function DisplayView() {
       )
     }
     if (phase === 'gambling') return <GamblingView session={session} gameState={gameState} />
-    if (phase === 'minigame') return <MinigameView session={session} gameState={gameState} />
+    if (phase === 'minigame' || phase === 'ravit') return <MinigameView session={session} gameState={gameState} />
     if (phase === 'shop')     return <ShopView gameState={gameState} />
     if (phase === 'result')   return <ResultView gameState={gameState} />
     if (phase === 'wheel')    return <WheelView gameState={gameState} />
