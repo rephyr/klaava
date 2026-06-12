@@ -16,13 +16,6 @@ Tournament-style gambling game with RFID player cards and a live bracket display
 
 **Tailwind CSS**: css framework
 
-## Monorepo structure
-
-```
-klaava/
-├── backend/     # Python FastAPI
-└── frontend/    # React + Vite + Tailwind CSS
-```
 
 ## Running the project
 
