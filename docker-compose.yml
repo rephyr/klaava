@@ -1,6 +1,7 @@
 services:
   backend:
     build: ./backend
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/klaava-backend:latest
     environment:
       DATABASE_URL: sqlite:////data/klaava.db
       CORS_ORIGINS: http://localhost
@@ -16,6 +17,7 @@ services:
 
   frontend:
     build: ./frontend
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/klaava-frontend:latest
     ports:
       - "3000:80"
     depends_on:
