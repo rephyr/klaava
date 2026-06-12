@@ -1,23 +1,37 @@
 # Klaava
 
-Tournament-style gambling game with RFID player cards and a live bracket display.
+Tournament-style gambling game with a live display screen, horse racing, blackjack, roulette, hi-lo, and an auction, which is controlled from an admin panel in real time.
 
 ## Tech stack
 
-**FastAPI**: Python backend framework. Async-ready and handles RFID events.
+| Layer | Technology |
+|---|---|
+| Backend | Python · FastAPI · SQLAlchemy · SQLite |
+| Frontend | React 18 · Vite · Tailwind CSS |
+| Infrastructure | Docker · Nginx · GitHub Actions |
 
-**Uvicorn**: ASGI server that runs FastAPI
+## Running with Docker
 
-**SQLAlchemy**: ORM for managing players, matches, and tournament state in the database without writing raw SQL.
+The easiest way to run the project. Requires [Docker](https://docs.docker.com/get-docker/) and Docker Compose.
 
-**React**: Component-based UI library.
+```bash
+git clone https://github.com/rephyr/klaava.git
+cd klaava
+docker-compose up --build
+```
 
-**Vite**: Frontend build tool. Fast dev server with instant hot module replacement.
+| URL | Description |
+|---|---|
+| `http://localhost:3000` | Admin panel -> control the game |
+| `http://localhost:3000/display` | Display screen -> shown to players |
 
-**Tailwind CSS**: css framework
+The database is stored in a Docker volume and persists across restarts. To reset it:
 
+```bash
+docker-compose down -v
+```
 
-## Running the project
+## Running locally (development)
 
 Both backend and frontend need to run at the same time in separate terminals.
 
@@ -35,4 +49,14 @@ uvicorn main:app --reload
 cd frontend
 npm install
 npm run dev
+```
+
+## Tests
+
+```bash
+# Backend
+cd backend && python -m pytest tests/ -v
+
+# Frontend
+cd frontend && npx vitest run src/tests/
 ```
