@@ -22,7 +22,7 @@ docker-compose up --build
 
 | URL | Description |
 |---|---|
-| `http://localhost:3000` | Admin panel -> control the game |
+| `http://localhost:3000/admin/` | Admin panel -> control the game |
 | `http://localhost:3000/display` | Display screen -> shown to players |
 
 The database is stored in a Docker volume and persists across restarts. To reset it:
