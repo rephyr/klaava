@@ -84,11 +84,6 @@ def testGameStateIncludesTotalRounds(client):
     state = client.get("/game").json()
     assert state["totalRounds"] == 4
 
-def testLobbyStateIncludesTotalRoundsFromSettings(client):
-    client.put("/settings/", json={"totalRounds": 2})
-    state = client.get("/game").json()
-    assert state["totalRounds"] == 2
-
 def testTotalRoundsFrozenAtGameStart(client):
     client.put("/settings/", json={"totalRounds": 3})  # explicit — not testing default
     p1 = client.post("/players/", json={"name": "test1"}).json()

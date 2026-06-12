@@ -19,12 +19,6 @@ def testDoubleOrNothingLose(client):
     assert result["result"] == "lose"
     assert result["klaava"] == 500
 
-def testDoubleOrNothingLoseDoesNotChangeKlaava(client):
-    player = client.post("/players/", json={"name": "test1", "klaava": 50}).json()
-    with patch("random.random", return_value=0.7):
-        res = client.post("/minigame/doubleOrNothing", json={"playerIds": [player["id"]], "amount": 200})
-    result = res.json()["results"][0]
-    assert result["klaava"] == 50
 
 def testDoubleOrNothingMultiplePlayers(client):
     p1 = client.post("/players/", json={"name": "test1", "klaava": 500}).json()

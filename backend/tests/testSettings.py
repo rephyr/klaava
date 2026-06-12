@@ -10,7 +10,7 @@ def testGetSettingsReturnsDefaults(client):
     assert data["maxLoanAmount"] == 800  # derived: maxBet(200) * 4
     assert data["gameMode"] == "tournament"
 
-def testGetSettingsCreatesRowIfMissing(client):
+def testGetSettingsIsIdempotent(client):
     res1 = client.get("/settings/")
     res2 = client.get("/settings/")
     assert res1.json() == res2.json()
@@ -49,13 +49,13 @@ def testTotalRoundsDefault(client):
     assert data["totalRounds"] == 5
 
 def testUpdateTotalRounds(client):
-    res = client.put("/settings/", json={"totalRounds": 5})
-    assert res.json()["totalRounds"] == 5
+    res = client.put("/settings/", json={"totalRounds": 7})
+    assert res.json()["totalRounds"] == 7
 
 def testUpdateTotalRoundsDoesNotAffectOtherFields(client):
-    client.put("/settings/", json={"totalRounds": 5})
+    client.put("/settings/", json={"totalRounds": 7})
     data = client.get("/settings/").json()
-    assert data["totalRounds"] == 5
+    assert data["totalRounds"] == 7
     assert data["startingKlaava"] == 500
 
 def testGamblingRoundsDefault(client):

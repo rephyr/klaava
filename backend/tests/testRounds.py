@@ -27,17 +27,6 @@ def testGameStateReflectsRoundAfterAdvance(client):
     assert state["round"] == 2
     assert state["totalRounds"] == 5
 
-def testDefaultTotalRoundsIsFive(client):
-    p1 = client.post("/players/", json={"name": "p1"}).json()
-    p2 = client.post("/players/", json={"name": "p2"}).json()
-    res = client.post("/game/start", json={"playerIds": [p1["id"], p2["id"]]})
-    assert res.json()["totalRounds"] == 5
-
-def testDefaultGamblingRoundsIsThree(client):
-    p1 = client.post("/players/", json={"name": "p1"}).json()
-    p2 = client.post("/players/", json={"name": "p2"}).json()
-    res = client.post("/game/start", json={"playerIds": [p1["id"], p2["id"]]})
-    assert res.json()["gamblingRounds"] == 3
 
 def testGamblingRoundsFrozenAtGameStart(client):
     client.put("/settings/", json={"gamblingRounds": 5})

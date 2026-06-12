@@ -125,3 +125,8 @@ def resetState():
 @router.get("/state")
 def getHiLoState():
     return _state
+
+@router.post("/reset")
+def resetHiLo():
+    resetState()
+    return _state

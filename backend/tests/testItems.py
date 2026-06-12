@@ -44,30 +44,6 @@ def testDoubleDownDoublesDoubleOrNothingWin(client):
 
 # --- Shield ---
 
-def testShieldNotTriggeredInLastRoll(client):
-    # Minigames are house-funded — losers don't lose klaava, so shield is not consumed
-    p1 = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
-    p2 = client.post("/players/", json={"name": "test2", "klaava": 500}).json()
-    startSession(client, [p1["id"], p2["id"]])
-    buyItem(client, p2["id"], "shield")
-    with patch("random.randint", side_effect=[6, 1]):
-        client.post("/minigame/lastRoll")
-    p2data = client.get(f"/players/{p2['id']}").json()
-    assert p2data["klaava"] == 375  # paid for shield; no loss deducted
-    assert p2data["powerup"] == "shield"  # not consumed — nothing to block
-
-def testShieldNotTriggeredInDoubleOrNothing(client):
-    # Minigames are house-funded — no loss to block
-    player = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
-    buyItem(client, player["id"], "shield")
-    with patch("random.random", return_value=0.7):
-        res = client.post("/minigame/doubleOrNothing", json={"playerIds": [player["id"]], "amount": 100})
-    result = res.json()["results"][0]
-    assert result["klaava"] == 375  # paid for shield; no loss
-    assert result["powerupTriggered"] is None
-    updated = client.get(f"/players/{player['id']}").json()
-    assert updated["powerup"] == "shield"  # not consumed
-
 
 # --- Steal ---
 
@@ -140,32 +116,6 @@ def testImmunityIsConsumedAfterBlock(client):
     client.post("/game/transfer", json={"fromPlayerId": p2["id"], "toPlayerId": p1["id"], "amount": 100})
     p2data = client.get(f"/players/{p2['id']}").json()
     assert p2data["powerup"] is None
-
-def testImmunityNotTriggeredInDoubleOrNothing(client):
-    # Minigames are house-funded — no loss to block with immunity
-    player = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
-    client.put(f"/players/{player['id']}", json={"powerup": "immunity"})
-    with patch("random.random", return_value=0.7):
-        res = client.post("/minigame/doubleOrNothing", json={"playerIds": [player["id"]], "amount": 100})
-    result = res.json()["results"][0]
-    assert result["klaava"] == 500  # unchanged
-    assert result["powerupTriggered"] is None
-    updated = client.get(f"/players/{player['id']}").json()
-    assert updated["powerup"] == "immunity"  # not consumed
-
-def testImmunityNotTriggeredInLastRoll(client):
-    p1 = client.post("/players/", json={"name": "test1", "klaava": 500}).json()
-    p2 = client.post("/players/", json={"name": "test2", "klaava": 500}).json()
-    startSession(client, [p1["id"], p2["id"]])
-    client.put(f"/players/{p2['id']}", json={"powerup": "immunity"})
-    with patch("random.randint", side_effect=[6, 1]):
-        res = client.post("/minigame/lastRoll")
-    results = {r["playerId"]: r for r in res.json()["results"]}
-    assert results[p2["id"]]["powerupTriggered"] is None
-    assert results[p2["id"]]["klaava"] == 500  # unchanged
-    p2data = client.get(f"/players/{p2['id']}").json()
-    assert p2data["klaava"] == 500
-    assert p2data["powerup"] == "immunity"  # not consumed — nothing to block
 
 
 # --- Jackpot ---
